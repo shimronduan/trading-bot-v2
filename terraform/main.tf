@@ -28,7 +28,7 @@ resource "azurerm_resource_group" "main" {
 
 # 2. Create the storage account required by the function app
 resource "azurerm_storage_account" "main" {
-  name                     = "tradingbotv2appsa" # Must be globally unique
+  name                     = "tradingbotappv2sa" # Must be globally unique
   resource_group_name      = azurerm_resource_group.main.name
   location                 = azurerm_resource_group.main.location
   account_tier             = "Standard"
@@ -45,7 +45,7 @@ resource "azurerm_storage_account" "main" {
 
 # 4. Create the Consumption Service Plan
 resource "azurerm_service_plan" "main" {
-  name                = "trading-bot-v2-app-plan"
+  name                = "trading-bot-app-v2-plan"
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
   os_type             = "Linux"
@@ -54,7 +54,7 @@ resource "azurerm_service_plan" "main" {
 
 # 5. Create the Linux Function App
 resource "azurerm_linux_function_app" "main" {
-  name                = "trading-bot-v2-app"
+  name                = "trading-bot-app-v2"
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
 
