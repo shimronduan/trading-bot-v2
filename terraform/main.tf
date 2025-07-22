@@ -36,12 +36,12 @@ resource "azurerm_storage_account" "main" {
 }
 
 # 3. Create the Application Insights for monitoring
-resource "azurerm_application_insights" "main" {
-  name                = "trading-bot-v2-app-insights"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
-  application_type    = "web"
-}
+# resource "azurerm_application_insights" "main" {
+#   name                = "trading-bot-v2-app-insights"
+#   location            = azurerm_resource_group.main.location
+#   resource_group_name = azurerm_resource_group.main.name
+#   application_type    = "web"
+# }
 
 # 4. Create the Consumption Service Plan
 resource "azurerm_service_plan" "main" {
@@ -69,7 +69,7 @@ resource "azurerm_linux_function_app" "main" {
   }
 
   app_settings = {
-    "APPINSIGHTS_INSTRUMENTATIONKEY" = azurerm_application_insights.main.instrumentation_key
+    # "APPINSIGHTS_INSTRUMENTATIONKEY" = azurerm_application_insights.main.instrumentation_key
     "FUNCTIONS_EXTENSION_VERSION"    = "~4"
   }
 }
