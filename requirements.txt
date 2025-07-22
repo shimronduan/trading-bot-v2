@@ -3,3 +3,9 @@
 # Manually managing azure-functions-worker may cause unexpected issues
 
 azure-functions
+binance-connector
+azure-data-tables
+pandas
+ta
+binance-futures-connector
+azure-storage-queue
