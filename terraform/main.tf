@@ -37,7 +37,7 @@ resource "azurerm_storage_account" "main" {
 
 # 3. Create the Application Insights for monitoring
 # resource "azurerm_application_insights" "main" {
-#   name                = "trading-bot-v2-app-insights"
+#   name                = "trading-bot-app-v2-insights"
 #   location            = azurerm_resource_group.main.location
 #   resource_group_name = azurerm_resource_group.main.name
 #   application_type    = "web"

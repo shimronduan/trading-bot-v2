@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_FUNCTIONAPP_NAME: 'trading-bot-v2-app'
+  AZURE_FUNCTIONAPP_NAME: 'trading-bot-app-v2'
   PYTHON_VERSION: '3.12'
 
 jobs:
