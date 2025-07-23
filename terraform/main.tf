@@ -15,6 +15,17 @@ terraform {
   }
 }
 
+variable "binance_api_key" {
+  description = "The API key for the Binance account."
+  type        = string
+  sensitive   = true 
+}
+variable "binance_api_secret" {
+  description = "The API secret for the Binance account."
+  type        = string
+  sensitive   = true 
+}
+
 # Configure the Azure Provider
 provider "azurerm" {
   features {}
@@ -100,5 +111,7 @@ resource "azurerm_linux_function_app" "main" {
     "APPINSIGHTS_INSTRUMENTATIONKEY" = azurerm_application_insights.main.instrumentation_key
     "FUNCTIONS_EXTENSION_VERSION"           = "~4"
     "AZURE_STORAGE_CONNECTION_STRING"       = azurerm_storage_account.botstorage.primary_connection_string
+    "BINANCE_API_KEY"                       = var.binance_api_key
+    "BINANCE_API_SECRET"                    = var.binance_api_secret
   }
 }
