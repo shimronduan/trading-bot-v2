@@ -3,7 +3,7 @@ import logging
 from decimal import Decimal, getcontext
 import json
 import os
-from azure_table_storage import AzureTableStorage
+# from azure_table_storage import AzureTableStorage
 from trading_config import SYMBOL
 import base64
 # from futures_client import FuturesClient
