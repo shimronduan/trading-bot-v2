@@ -55,12 +55,12 @@ resource "azurerm_storage_table" "takeprofitandstoploss" {
 }
 
 # 3. Create the Application Insights for monitoring
-# resource "azurerm_application_insights" "main" {
-#   name                = "trading-bot-app-v2-insights"
-#   location            = azurerm_resource_group.main.location
-#   resource_group_name = azurerm_resource_group.main.name
-#   application_type    = "web"
-# }
+resource "azurerm_application_insights" "main" {
+  name                = "trading-bot-app-v2-insights"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  application_type    = "web"
+}
 
 # 4. Create the Consumption Service Plan
 resource "azurerm_service_plan" "main" {
