@@ -88,7 +88,7 @@ resource "azurerm_linux_function_app" "main" {
   }
 
   app_settings = {
-    # "APPINSIGHTS_INSTRUMENTATIONKEY" = azurerm_application_insights.main.instrumentation_key
+    "APPINSIGHTS_INSTRUMENTATIONKEY" = azurerm_application_insights.main.instrumentation_key
     "FUNCTIONS_EXTENSION_VERSION"           = "~4"
     "AZURE_STORAGE_CONNECTION_STRING"       = azurerm_storage_account.botstorage.primary_connection_string
   }
