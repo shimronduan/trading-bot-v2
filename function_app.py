@@ -6,7 +6,7 @@ import os
 from azure_table_storage import AzureTableStorage
 from trading_config import SYMBOL
 import base64
-# from futures_client import FuturesClient
+from futures_client import FuturesClient
 # from azure.storage.queue import QueueClient
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
