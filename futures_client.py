@@ -133,6 +133,10 @@ class FuturesClient:
         # Get symbol precision rules for quantity and price
         exchange_info = self.client.exchange_info()
         symbol_info = next((s for s in exchange_info['symbols'] if s['symbol'] == SYMBOL), None)
+        
+        if not symbol_info:
+            raise Exception(f"Could not retrieve exchange info for {SYMBOL}")
+        
         price_decimals = int(symbol_info.get('pricePrecision', 4))
         quantity_decimals = int(symbol_info.get('quantityPrecision', 0))
 
