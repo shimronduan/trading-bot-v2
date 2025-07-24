@@ -3,7 +3,7 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~>3.0"
+      version = "~>3.90" # Pinned to a stable version range
     }
   }
   backend "azurerm" {
@@ -13,6 +13,17 @@ terraform {
     container_name       = "trading-bot-v2-tfstate"
     key                  = "prod.terraform.tfstate"
   }
+}
+
+variable "binance_api_key" {
+  description = "The API key for the Binance account."
+  type        = string
+  sensitive   = true 
+}
+variable "binance_api_secret" {
+  description = "The API secret for the Binance account."
+  type        = string
+  sensitive   = true 
 }
 
 # Configure the Azure Provider
@@ -54,13 +65,22 @@ resource "azurerm_storage_table" "takeprofitandstoploss" {
   storage_account_name = azurerm_storage_account.botstorage.name
 }
 
+resource "azurerm_log_analytics_workspace" "main" {
+  name                = "trading-bot-v2-log-analytics"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  sku                 = "PerGB2018"
+  retention_in_days   = 30
+}
+
 # 3. Create the Application Insights for monitoring
-# resource "azurerm_application_insights" "main" {
-#   name                = "trading-bot-app-v2-insights"
-#   location            = azurerm_resource_group.main.location
-#   resource_group_name = azurerm_resource_group.main.name
-#   application_type    = "web"
-# }
+resource "azurerm_application_insights" "main" {
+  name                = "trading-bot-app-v2-insights"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  application_type    = "web"
+  workspace_id        = azurerm_log_analytics_workspace.main.id
+}
 
 # 4. Create the Consumption Service Plan
 resource "azurerm_service_plan" "main" {
@@ -88,8 +108,10 @@ resource "azurerm_linux_function_app" "main" {
   }
 
   app_settings = {
-    # "APPINSIGHTS_INSTRUMENTATIONKEY" = azurerm_application_insights.main.instrumentation_key
+    "APPINSIGHTS_INSTRUMENTATIONKEY" = azurerm_application_insights.main.instrumentation_key
     "FUNCTIONS_EXTENSION_VERSION"           = "~4"
     "AZURE_STORAGE_CONNECTION_STRING"       = azurerm_storage_account.botstorage.primary_connection_string
+    "BINANCE_API_KEY"                       = var.binance_api_key
+    "BINANCE_API_SECRET"                    = var.binance_api_secret
   }
 }
