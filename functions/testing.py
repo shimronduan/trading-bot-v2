@@ -1,12 +1,10 @@
 import azure.functions as func
 import json
-from configuration import get_env_variables
 from trading_config import SYMBOL
-from futures_client import FuturesClient
+from utils.client_factory import create_futures_client
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
-    env_vars = get_env_variables()
-    client = FuturesClient(env_vars["API_KEY"], env_vars["API_SECRET"])
+    client = create_futures_client()
     client.close_position_if_no_open_orders(SYMBOL)
     client.cancel_orders_if_no_position(SYMBOL)
 

@@ -2,15 +2,13 @@ import azure.functions as func
 import logging
 import json
 import base64
-from azure_table_storage import AzureTableStorage
-from configuration import get_env_variables
 from trading_config import SYMBOL
-from futures_client import FuturesClient
-from azure.storage.queue import QueueClient
+from utils.client_factory import create_futures_client
+from utils.storage_factory import create_table_storage_client, create_queue_client
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
-    env_vars = get_env_variables()
-    client = FuturesClient(env_vars["API_KEY"], env_vars["API_SECRET"])
+    client = create_futures_client()
+    ats_client = create_table_storage_client()
     try:
         raw_body = req.get_body()
         logging.info(f"Raw request body: {raw_body}")
@@ -27,15 +25,11 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                 return func.HttpResponse(json.dumps({"status": "ignored", "message": f"Signal {signal_type} ignored due to existing position."}), status_code=200)
 
             quantity = client.calculate_trade_quantity()
-            ats_client = AzureTableStorage(connection_string=env_vars["AZURE_STORAGE_CONNECTION_STRING"], table_name=env_vars["TP_SL_TABLE_NAME"])
             records = ats_client.list_records()
             response_message = client.execute_trade_with_sl_tp(desired_side, quantity, records)
 
             try:
-                queue_client = QueueClient.from_connection_string(
-                    conn_str=env_vars["AZURE_STORAGE_CONNECTION_STRING"],
-                    queue_name="orders"
-                )
+                queue_client = create_queue_client(queue_name="orders")
                 encoded_message = base64.b64encode("DOGEUSDT".encode("utf-8")).decode("utf-8")
                 queue_client.send_message(encoded_message, visibility_timeout=60)
                 logging.info("Successfully enqueued message: DOGEUSDT")
