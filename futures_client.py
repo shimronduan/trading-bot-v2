@@ -219,7 +219,25 @@ class FuturesClient:
             callbackRate=0.5,
             reduceOnly=True
         )
-        # logging.info(f"Stop Loss order placed at {sl_price} to close the entire position.")
+
+        # atr = 0.00194
+        #  # --- Place a single Trailing Stop Loss for the entire position ---
+        # if atr is not None and entry_price > 0:
+        #     # Calculate callbackRate as a percentage of entry price
+        #     callback_rate = round((atr / entry_price) * 100, 2)
+        #     # Binance minimum callbackRate is usually 0.1, so ensure it's not below that
+        #     callback_rate = max(callback_rate, 0.1)
+        # else:
+        #     callback_rate = 0.5  # fallback to default
+
+        # self.client.new_order(
+        #     symbol=SYMBOL,
+        #     side=close_side,
+        #     type='TRAILING_STOP_MARKET',
+        #     quantity=quantity,
+        #     callbackRate=callback_rate,
+        #     reduceOnly=True
+        # )
         
         return f"Success: {side} position opened for {quantity} {SYMBOL} at ~{entry_price}. Multiple TPs and one SL have been set."
     
