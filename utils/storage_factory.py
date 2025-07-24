@@ -1,7 +1,7 @@
 from azure_table_storage import AzureTableStorage
 from azure.storage.queue import QueueClient
 
-from configuration import get_env_variables
+from config.configuration import get_env_variables
 
 
 def create_table_storage_client():

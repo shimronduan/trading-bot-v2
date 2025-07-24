@@ -1,4 +1,4 @@
-from configuration import get_env_variables
+from config.configuration import get_env_variables
 from futures_client import FuturesClient
 
 
