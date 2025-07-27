@@ -15,9 +15,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
         decoded_body = raw_body.decode('utf-8').strip().split('-')
         logging.info(f"Decoded request body: {decoded_body}")
-        ticker = decoded_body[0].title().strip()
-        signal_type = decoded_body[1].title().strip()
-        atr = float(decoded_body[2]) if len(decoded_body) > 2 else 0.0
+        # ticker = decoded_body[0].title().strip()
+        signal_type = decoded_body[0].title().strip()
+        atr = float(decoded_body[1]) if len(decoded_body) > 1 else 0.0
 
         response_message = ""
         if signal_type == "Close":
