@@ -224,7 +224,7 @@ class FuturesClient:
          # --- Place a single Trailing Stop Loss for the entire position ---
         if atr is not None and entry_price > 0:
             # Calculate callbackRate as a percentage of entry price
-            callback_rate = round((atr / entry_price) * 100, 2)
+            callback_rate = round((atr*1.5 / entry_price) * 100, 2)
             # Binance minimum callbackRate is usually 0.1, so ensure it's not below that
             callback_rate = max(callback_rate, 0.1)
         else:
