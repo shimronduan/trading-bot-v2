@@ -13,10 +13,11 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         raw_body = req.get_body()
         logging.info(f"Raw request body: {raw_body}")
 
-        body = json.loads(raw_body)
-        signal_type = body.get("type", "").title().strip()
-        atr = float(body.get("atr", "0.0"))
-        # signal_type = raw_body.decode('utf-8').title().strip()
+        decoded_body = raw_body.decode('utf-8').strip().split('-')
+        logging.info(f"Decoded request body: {decoded_body}")
+        ticker = decoded_body[0].title().strip()
+        signal_type = decoded_body[1].title().strip()
+        atr = float(decoded_body[2]) if len(decoded_body) > 2 else 0.0
 
         response_message = ""
         if signal_type == "Close":
