@@ -211,17 +211,8 @@ class FuturesClient:
         else: # SELL
             sl_price = f"{entry_price * (1 + STOP_LOSS_PERCENT):.{price_decimals}f}"
 
-        # self.client.new_order(
-        #     symbol=SYMBOL,
-        #     side=close_side,
-        #     type='TRAILING_STOP_MARKET',
-        #     quantity=quantity,
-        #     callbackRate=0.5,
-        #     reduceOnly=True
-        # )
-
         # atr = 0.00194
-         # --- Place a single Trailing Stop Loss for the entire position ---
+        # --- Place a single Trailing Stop Loss for the entire position ---
         if atr is not None and entry_price > 0:
             # Calculate callbackRate as a percentage of entry price
             callback_rate = round((atr*1.5 / entry_price) * 100, 2)
