@@ -12,12 +12,39 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     try:
         raw_body = req.get_body()
         logging.info(f"Raw request body: {raw_body}")
-
-        decoded_body = raw_body.decode('utf-8').strip().split('-')
+        
+        decoded_body = raw_body.decode('utf-8').strip()
         logging.info(f"Decoded request body: {decoded_body}")
-        # ticker = decoded_body[0].title().strip()
-        signal_type = decoded_body[0].title().strip()
-        atr = float(decoded_body[1]) if len(decoded_body) > 1 else 0.0
+        
+        # Parse each line and extract values
+        lines = decoded_body.split('\n')
+        signal_type = ""
+        ticker = None
+        price = None
+        atr = 0
+        if(decoded_body.lower().__contains__('close')):
+            signal_type = 'Close'
+        else:
+            for line in lines:
+                if ':' in line:
+                    key, value = line.split(':', 1)
+                    key = key.strip()
+                    value = value.strip()
+                    
+                    if key == 'Signal':
+                        signal_type = "Long" if value == "UT_BUY" else "Short"
+                    elif key == 'Ticker':
+                        ticker = value
+                    elif key == 'Price':
+                        price = float(value)
+                    elif key == 'ATR':
+                        atr = float(value)
+
+        # decoded_body = raw_body.decode('utf-8').strip()
+        # logging.info(f"Decoded request body: {decoded_body}")
+        # # ticker = decoded_body[0].title().strip()
+        # signal_type = decoded_body[0].title().strip()
+        # atr = float(decoded_body[1]) if len(decoded_body) > 1 else 0.0
 
         response_message = ""
         if signal_type == "Close":
