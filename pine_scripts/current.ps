@@ -1,0 +1,169 @@
+//@version=5
+// This script has been rewritten to prevent errors with webhooks on higher timeframes.
+// Key Improvements:
+// 1. Data Readiness Check: An 'isDataReady' variable now ensures all indicators (EMAs, MACD, RSI, ATR) have enough historical bars to compute valid data before any alert is triggered. This solves the "empty body" error.
+// 2. Repainting Fix: The Heikin Ashi signal calculation was corrected to use `lookahead=barmerge.lookahead_off` to prevent signals from changing after a bar has closed, ensuring alert reliability.
+// 3. Clearer Alert Messages: Alert messages are structured to provide consistent and useful data for your webhook.
+
+indicator('Robust Signal Alerter [v7]', overlay=true, precision=2, max_lines_count=500)
+
+
+// ———————— Inputs ————————
+// --- Group: Moving Averages ---
+ema9_len = input.int(9, 'EMA 9 Length', group='Moving Averages', minval=1)
+ema21_len = input.int(21, 'EMA 21 Length', group='Moving Averages', minval=1)
+ema50_len = input.int(50, 'EMA 50 Length', group='Moving Averages', minval=1)
+
+// --- Group: MACD ---
+macd_fast = input.int(12, 'MACD Fast Length', group='MACD', minval=1)
+macd_slow = input.int(26, 'MACD Slow Length', group='MACD', minval=1)
+macd_signal = input.int(9, 'MACD Signal Length', group='MACD', minval=1)
+
+// --- Group: RSI ---
+rsi_length = input.int(14, 'RSI Length', group='RSI', minval=1)
+rsi_overbought = input.int(70, 'RSI Overbought', group='RSI', minval=50, maxval=90)
+rsi_oversold = input.int(30, 'RSI Oversold', group='RSI', minval=10, maxval=50)
+
+// --- Group: BOT Signals (UT Bot) ---
+ut_key_value = input.int(1, 'BOT Key Value (Sensitivity)', group='BOT Signals', minval=1)
+atr_period_bot = input.int(10, 'BOT ATR Period', group='BOT Signals', minval=1)
+use_heikin_ashi = input.bool(false, 'BOT Signals from Heikin Ashi Candles', group='BOT Signals')
+
+// --- Group: ATR Settings ---
+atr_length = input.int(14, title="ATR Period", group="ATR Settings", minval=1)
+atr_smoothing_type = input.string("RMA", title="Smoothing Type", options=["RMA", "SMA", "EMA", "WMA"], group="ATR Settings")
+
+// --- Group: Style ---
+ema9_color = input.color(#2962FF, 'EMA 9 Color', group='Style')
+ema21_color = input.color(#FF6D00, 'EMA 21 Color', group='Style')
+ema50_color = input.color(#00C853, 'EMA 50 Color', group='Style')
+vwap_color = input.color(#AA00FF, 'VWAP Color', group='Style')
+rsi_color = input.color(#FFC400, 'RSI Color', group='Style')
+buy_color = color.new(color.green, 0)
+sell_color = color.new(color.red, 0)
+
+// ———————— Calculations ————————
+// --- EMAs and VWAP ---
+ema9 = ta.ema(close, ema9_len)
+ema21 = ta.ema(close, ema21_len)
+ema50 = ta.ema(close, ema50_len)
+vwap_value = ta.vwap(hlc3)
+
+// --- MACD ---
+[macdLine, signalLine, histLine] = ta.macd(close, macd_fast, macd_slow, macd_signal)
+macd_above_zero = macdLine >= 0
+macd_bullish_momentum = histLine > 0 and histLine > histLine[1] and macd_above_zero
+macd_bearish_momentum = histLine < 0 and histLine < histLine[1] and not macd_above_zero
+
+// --- RSI ---
+rsi_value = ta.rsi(close, rsi_length)
+rsi_bullish_cross = ta.crossover(rsi_value, rsi_oversold)
+rsi_bearish_cross = ta.crossunder(rsi_value, rsi_overbought)
+
+// --- Trend Conditions ---
+bullish_trend = ema9 > ema21 and ema21 > ema50 and close > ema50
+bearish_trend = ema9 < ema21 and ema21 < ema50 and close < ema50
+
+// --- UT Bot Calculation (with Repainting Fix) ---
+// Using `request.security` with `lookahead_off` is crucial for reliable, non-repainting alerts.
+src_ut = if use_heikin_ashi
+    request.security(ticker.heikinashi(syminfo.tickerid), timeframe.period, close, lookahead=barmerge.lookahead_off)
+else
+    close
+
+xATR = ta.atr(atr_period_bot)
+nLoss = ut_key_value * xATR
+
+var float xATRTrailingStop = 0.0
+xATRTrailingStop := if src_ut > nz(xATRTrailingStop[1], 0) and src_ut[1] > nz(xATRTrailingStop[1], 0)
+    math.max(nz(xATRTrailingStop[1]), src_ut - nLoss)
+else if src_ut < nz(xATRTrailingStop[1], 0) and src_ut[1] < nz(xATRTrailingStop[1], 0)
+    math.min(nz(xATRTrailingStop[1]), src_ut + nLoss)
+else if src_ut > nz(xATRTrailingStop[1], 0)
+    src_ut - nLoss
+else
+    src_ut + nLoss
+
+ut_above = ta.crossover(src_ut, xATRTrailingStop)
+ut_below = ta.crossunder(src_ut, xATRTrailingStop)
+
+ut_buy_signal = ut_above and bullish_trend
+ut_sell_signal = ut_below and bearish_trend
+
+// --- ATR for Alert Messages ---
+tr_value = ta.tr(true)
+atr_value = switch atr_smoothing_type
+    "SMA" => ta.sma(tr_value, atr_length)
+    "EMA" => ta.ema(tr_value, atr_length)
+    "WMA" => ta.wma(tr_value, atr_length)
+    => ta.rma(tr_value, atr_length)
+
+// --- Final Signal Logic ---
+bullish_signal = bullish_trend and ta.crossover(ema9, ema21) and macd_bullish_momentum and rsi_bullish_cross and close > vwap_value
+bearish_signal = bearish_trend and ta.crossunder(ema9, ema21) and macd_bearish_momentum and rsi_bearish_cross and close < vwap_value
+
+// ———————— Data Readiness Check ————————
+// This is the most important fix. We check if all our key indicators have calculated a valid number.
+// `na()` checks if a value is "Not Available". The script will wait until this is false.
+// This prevents alerts from firing with incomplete data on higher timeframes.
+isDataReady = not na(ema50) and not na(macdLine) and not na(rsi_value) and not na(xATRTrailingStop) and not na(atr_value)
+
+// ———————— Plotting ————————
+plot(ema9, 'EMA 9', color=ema9_color)
+plot(ema21, 'EMA 21', color=ema21_color)
+plot(ema50, 'EMA 50', color=ema50_color)
+plot(vwap_value, 'VWAP', color=vwap_color, style=plot.style_circles)
+
+// --- Plot UT Bot Trailing Stop ---
+plot(xATRTrailingStop, "ATR Trailing Stop", color=src_ut > xATRTrailingStop ? buy_color : sell_color, linewidth=2)
+
+// --- Plot Buy/Sell Signals on Chart ---
+plotshape(bullish_signal and isDataReady, 'Bullish Entry', style=shape.labelup, location=location.belowbar, color=color.new(color.green, 25), text='BUY', textcolor=color.white, size=size.small)
+plotshape(bearish_signal and isDataReady, 'Bearish Entry', style=shape.labeldown, location=location.abovebar, color=color.new(color.red, 25), text='SELL', textcolor=color.white, size=size.small)
+plotshape(ut_buy_signal and isDataReady, 'UT Buy', style=shape.triangleup, location=location.belowbar, color=color.new(color.blue, 25), size=size.tiny)
+plotshape(ut_sell_signal and isDataReady, 'UT Sell', style=shape.triangledown, location=location.abovebar, color=color.new(color.orange, 25), size=size.tiny)
+
+
+// ———————— Alerts ————————
+// The 'isDataReady' check is applied to all alerts.
+// This ensures the script "waits" for all data to be valid before creating the alert message.
+
+// --- Standard Alert Conditions (for the Alerts tab in TradingView) ---
+alertcondition(bullish_signal and isDataReady, 'Bullish Confluence Signal', 'Bullish signal triggered for {{ticker}}.')
+alertcondition(bearish_signal and isDataReady, 'Bearish Confluence Signal', 'Bearish signal triggered for {{ticker}}.')
+alertcondition(ut_buy_signal and isDataReady, 'BOT Long Signal', 'BOT Buy signal triggered for {{ticker}}.')
+alertcondition(ut_sell_signal and isDataReady, 'BOT Short Signal', 'BOT Sell signal triggered for {{ticker}}.')
+
+
+// --- Dynamic Webhook Alerts (Fires only once per confirmed bar) ---
+if barstate.isconfirmed and isDataReady
+    // --- Main Confluence Signals ---
+    if bullish_signal
+        string bullish_message = 'Signal: BUY'
+         + '\nTicker: ' + syminfo.ticker
+         + '\nPrice: ' + str.tostring(close, '#.##')
+         + '\nATR: ' + str.tostring(atr_value, '#.#####')
+        alert(bullish_message, alert.freq_once_per_bar_close)
+
+    if bearish_signal
+        string bearish_message = 'Signal: SELL'
+         + '\nTicker: ' + syminfo.ticker
+         + '\nPrice: ' + str.tostring(close, '#.##')
+         + '\nATR: ' + str.tostring(atr_value, '#.#####')
+        alert(bearish_message, alert.freq_once_per_bar_close)
+
+    // --- UT Bot Signals ---
+    if ut_buy_signal
+        string ut_buy_message = 'Signal: UT_BUY'
+         + '\nTicker: ' + syminfo.ticker
+         + '\nPrice: ' + str.tostring(close, '#.##')
+         + '\nATR: ' + str.tostring(atr_value, '#.#####')
+        alert(ut_buy_message, alert.freq_once_per_bar_close)
+
+    if ut_sell_signal
+        string ut_sell_message = 'Signal: UT_SELL'
+         + '\nTicker: ' + syminfo.ticker
+         + '\nPrice: ' + str.tostring(close, '#.##')
+         + '\nATR: ' + str.tostring(atr_value, '#.#####')
+        alert(ut_sell_message, alert.freq_once_per_bar_close)
+
