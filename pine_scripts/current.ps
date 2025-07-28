@@ -1,5 +1,5 @@
 //@version=5
-// This script has been rewritten to prevent errors with webhooks on higher timeframes.
+// This script has been rewritten to prevent errors with webhooks on higher timeframes...
 // Key Improvements:
 // 1. Data Readiness Check: An 'isDataReady' variable now ensures all indicators (EMAs, MACD, RSI, ATR) have enough historical bars to compute valid data before any alert is triggered. This solves the "empty body" error.
 // 2. Repainting Fix: The Heikin Ashi signal calculation was corrected to use `lookahead=barmerge.lookahead_off` to prevent signals from changing after a bar has closed, ensuring alert reliability.
