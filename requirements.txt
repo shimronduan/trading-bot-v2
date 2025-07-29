@@ -9,4 +9,6 @@ binance-futures-connector
 azure-storage-queue
 pandas
 pandas-ta
+ta
 numpy<2.0
+setuptools
