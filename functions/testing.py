@@ -1,11 +1,16 @@
 import azure.functions as func
 import json
+import logging
 from technical_analysis import TechnicalAnalysis
 from trading_config import SYMBOL
 from utils.client_factory import create_futures_client
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
+    raw_body = req.get_body()
+    logging.info(f"Raw request body: {raw_body}")
+    
     client = create_futures_client()
+
     # --- NEW: Use the TechnicalAnalysis class ---
     # Initialize it with the same client instance
     ta_calculator = TechnicalAnalysis(client=client.client)
