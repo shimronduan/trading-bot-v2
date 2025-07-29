@@ -1,8 +1,11 @@
+from decimal import getcontext
 import azure.functions as func
 from functions.http_trigger import main as http_trigger
 from functions.futures_trading import main as futures_trading
 from functions.testing import main as testing
 from functions.queue_trigger import main as queue_trigger_function
+
+getcontext().prec = 18 # Decimal precision
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
 
