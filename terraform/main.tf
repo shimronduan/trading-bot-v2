@@ -89,7 +89,6 @@ resource "azurerm_service_plan" "main" {
   location            = azurerm_resource_group.main.location
   os_type             = "Linux"
   sku_name            = "FC1" # FC1 is the SKU code for Flex Consumption
-  kind                = "elastic" # This is required for the FC1 SKU
 }
 
 # 5. Create the Linux Function App
@@ -102,7 +101,7 @@ resource "azurerm_linux_function_app" "main" {
   storage_account_access_key = azurerm_storage_account.main.primary_access_key
   service_plan_id            = azurerm_service_plan.main.id
   functions_extension_version = "~4"
-  
+
   site_config {
     application_stack {
       python_version = "3.12"
