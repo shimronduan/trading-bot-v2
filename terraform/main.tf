@@ -32,16 +32,16 @@ provider "azurerm" {
 }
 
 # 1. Create the main resource group for the function app
-resource "azurerm_resource_group" "main" {
-  name     = "trading-bot-v2-rg"
+resource "azurerm_resource_group" "flexrg" {
+  name     = "trading-bot-v2-flex-rg"
   location = "Germany West Central"
 }
 
 # 2. Create the storage account required by the function app
 resource "azurerm_storage_account" "main" {
   name                     = "tradingbotappv2sa" # Must be globally unique
-  resource_group_name      = azurerm_resource_group.main.name
-  location                 = azurerm_resource_group.main.location
+  resource_group_name      = azurerm_resource_group.flexrg.name
+  location                 = azurerm_resource_group.flexrg.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
 }
@@ -49,8 +49,8 @@ resource "azurerm_storage_account" "main" {
 # 2. Create the storage account required by the function app
 resource "azurerm_storage_account" "botstorage" {
   name                     = "tradingbotv2sa" # Must be globally unique
-  resource_group_name      = azurerm_resource_group.main.name
-  location                 = azurerm_resource_group.main.location
+  resource_group_name      = azurerm_resource_group.flexrg.name
+  location                 = azurerm_resource_group.flexrg.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
 }
@@ -67,8 +67,8 @@ resource "azurerm_storage_table" "takeprofitandstoploss" {
 
 resource "azurerm_log_analytics_workspace" "main" {
   name                = "trading-bot-v2-log-analytics"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.flexrg.location
+  resource_group_name = azurerm_resource_group.flexrg.name
   sku                 = "PerGB2018"
   retention_in_days   = 30
 }
@@ -76,8 +76,8 @@ resource "azurerm_log_analytics_workspace" "main" {
 # 3. Create the Application Insights for monitoring
 resource "azurerm_application_insights" "main" {
   name                = "trading-bot-app-v2-insights"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.flexrg.location
+  resource_group_name = azurerm_resource_group.flexrg.name
   application_type    = "web"
   workspace_id        = azurerm_log_analytics_workspace.main.id
 }
@@ -85,8 +85,8 @@ resource "azurerm_application_insights" "main" {
 # 4. Create the Consumption Service Plan
 resource "azurerm_service_plan" "main" {
   name                = "trading-bot-app-v2-plan"
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.flexrg.name
+  location            = azurerm_resource_group.flexrg.location
   os_type             = "Linux"
   sku_name            = "FC1" # FC1 is the code for the Flex Consumption plan
 }
@@ -94,8 +94,8 @@ resource "azurerm_service_plan" "main" {
 # 5. Create the Linux Function App
 resource "azurerm_linux_function_app" "main" {
   name                = "trading-bot-app-v2"
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.flexrg.name
+  location            = azurerm_resource_group.flexrg.location
 
   storage_account_name       = azurerm_storage_account.main.name
   storage_account_access_key = azurerm_storage_account.main.primary_access_key
