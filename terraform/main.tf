@@ -101,23 +101,13 @@ resource "azurerm_linux_function_app" "main" {
   storage_account_name       = azurerm_storage_account.main.name
   storage_account_access_key = azurerm_storage_account.main.primary_access_key
 
-  # The 'site_config' block now gets a sibling 'function_app_config' block
+  # The 'site_config' block provides the necessary runtime configuration.
   site_config {
-    http2_enabled = true
-  }
-
-  # --- ADD THIS ENTIRE BLOCK ---
-  # This config is required for Flex Consumption plans
-  function_app_config {
-    runtime {
-      name    = "python"
-      version = "3.12"
+    application_stack {
+      python_version = "3.12"
     }
-    # You can also configure scaling and concurrency settings here
-    scale_and_concurrency {
-      maximum_instance_count = 10 # Example: max 10 instances
-      instance_memory_mb     = 2048
-    }
+    # This setting is also part of the required configuration.
+    always_on = false 
   }
 
   app_settings = {
@@ -126,5 +116,6 @@ resource "azurerm_linux_function_app" "main" {
     "AZURE_STORAGE_CONNECTION_STRING"       = azurerm_storage_account.botstorage.primary_connection_string
     "BINANCE_API_KEY"                       = var.binance_api_key
     "BINANCE_API_SECRET"                    = var.binance_api_secret
+    "WEBSITE_NODE_DEFAULT_VERSION" = "~20"
   }
 }
