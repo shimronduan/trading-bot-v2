@@ -101,6 +101,10 @@ resource "azurerm_linux_function_app" "main" {
   storage_account_name       = azurerm_storage_account.main.name
   storage_account_access_key = azurerm_storage_account.main.primary_access_key
 
+  # Add this block for FlexConsumption
+  functions_extension_version = "~4"
+  builtin_logging_enabled     = true
+  
   site_config {
     http2_enabled = true
     application_stack {
@@ -115,5 +119,7 @@ resource "azurerm_linux_function_app" "main" {
     "AZURE_STORAGE_CONNECTION_STRING"       = azurerm_storage_account.botstorage.primary_connection_string
     "BINANCE_API_KEY"                       = var.binance_api_key
     "BINANCE_API_SECRET"                    = var.binance_api_secret
+    "WEBSITE_CONTENTSHARE"                  = "trading-bot-app-v2"
+    "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING" = azurerm_storage_account.main.primary_connection_string
   }
 }
