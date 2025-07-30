@@ -15,6 +15,17 @@ terraform {
   }
 }
 
+variable "binance_api_key" {
+  description = "The API key for the Binance account."
+  type        = string
+  sensitive   = true 
+}
+variable "binance_api_secret" {
+  description = "The API secret for the Binance account."
+  type        = string
+  sensitive   = true 
+}
+
 # Configure the Azure Provider
 provider "azurerm" {
   features {}
@@ -77,7 +88,7 @@ resource "azurerm_service_plan" "main" {
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
   os_type             = "Linux"
-  sku_name            = "FC1" # Y1 is the code for the Consumption plan
+  sku_name            = "FC1" # FC1 is the code for the Flex Consumption plan
 }
 
 # 5. Create the Linux Function App
@@ -100,5 +111,7 @@ resource "azurerm_linux_function_app" "main" {
     "APPINSIGHTS_INSTRUMENTATIONKEY" = azurerm_application_insights.main.instrumentation_key
     "FUNCTIONS_EXTENSION_VERSION"           = "~4"
     "AZURE_STORAGE_CONNECTION_STRING"       = azurerm_storage_account.botstorage.primary_connection_string
+    "BINANCE_API_KEY"                       = var.binance_api_key
+    "BINANCE_API_SECRET"                    = var.binance_api_secret
   }
 }
