@@ -101,25 +101,30 @@ resource "azurerm_linux_function_app" "main" {
   storage_account_name       = azurerm_storage_account.main.name
   storage_account_access_key = azurerm_storage_account.main.primary_access_key
 
-  # Add this block for FlexConsumption
-  functions_extension_version = "~4"
-  builtin_logging_enabled     = true
-  
+  # The 'site_config' block now gets a sibling 'function_app_config' block
   site_config {
     http2_enabled = true
-    application_stack {
-      python_version = "3.12"
+  }
+
+  # --- ADD THIS ENTIRE BLOCK ---
+  # This config is required for Flex Consumption plans
+  function_app_config {
+    runtime {
+      name    = "python"
+      version = "3.12"
+    }
+    # You can also configure scaling and concurrency settings here
+    scale_and_concurrency {
+      maximum_instance_count = 10 # Example: max 10 instances
+      instance_memory_mb     = 2048
     }
   }
-  
+
   app_settings = {
-    "APPINSIGHTS_INSTRUMENTATIONKEY" = azurerm_application_insights.main.instrumentation_key
-    "WEBSITE_MEMORY_LIMIT_MB"               = "2048"
     "FUNCTIONS_EXTENSION_VERSION"           = "~4"
+    "APPINSIGHTS_INSTRUMENTATIONKEY"        = azurerm_application_insights.main.instrumentation_key
     "AZURE_STORAGE_CONNECTION_STRING"       = azurerm_storage_account.botstorage.primary_connection_string
     "BINANCE_API_KEY"                       = var.binance_api_key
     "BINANCE_API_SECRET"                    = var.binance_api_secret
-    "WEBSITE_CONTENTSHARE"                  = "trading-bot-app-v2"
-    "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING" = azurerm_storage_account.main.primary_connection_string
   }
 }
