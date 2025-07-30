@@ -82,14 +82,14 @@ resource "azurerm_application_insights" "main" {
   workspace_id        = azurerm_log_analytics_workspace.main.id
 }
 
-# 4. Create the Consumption Service Plan
-resource "azurerm_service_plan" "main" {
-  name                = "trading-bot-app-v2-plan"
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
-  os_type             = "Linux"
-  sku_name            = "Y1" # Y1 is the code for the Consumption plan
-}
+# # 4. Create the Consumption Service Plan
+# resource "azurerm_service_plan" "main" {
+#   name                = "trading-bot-app-v2-plan"
+#   resource_group_name = azurerm_resource_group.main.name
+#   location            = azurerm_resource_group.main.location
+#   os_type             = "Linux"
+#   sku_name            = "Y1" # Y1 is the code for the Consumption plan
+# }
 
 # 5. Create the Linux Function App
 resource "azurerm_linux_function_app" "main" {
@@ -99,17 +99,26 @@ resource "azurerm_linux_function_app" "main" {
 
   storage_account_name       = azurerm_storage_account.main.name
   storage_account_access_key = azurerm_storage_account.main.primary_access_key
-  service_plan_id            = azurerm_service_plan.main.id
+  # service_plan_id is removed to enable a consumption-style plan implicitly
+
+  # Use the top-level argument for extension version
+  functions_extension_version = "~4"
 
   site_config {
     application_stack {
       python_version = "3.12"
     }
+    # Enabling HTTP/2 is a good practice for modern apps
+    http2_enabled = true 
   }
 
   app_settings = {
+    # --- ADD these settings to enable Flex Consumption ---
+    "WEBSITE_SKU"            = "FlexConsumption" # Explicitly sets the SKU
+    "WEBSITE_MEMORY_LIMIT_MB" = "2048"           # Sets instance memory (e.g., 2048 or 4096)
+    
+    # --- Your existing settings ---
     "APPINSIGHTS_INSTRUMENTATIONKEY" = azurerm_application_insights.main.instrumentation_key
-    "FUNCTIONS_EXTENSION_VERSION"           = "~4"
     "AZURE_STORAGE_CONNECTION_STRING"       = azurerm_storage_account.botstorage.primary_connection_string
     "BINANCE_API_KEY"                       = var.binance_api_key
     "BINANCE_API_SECRET"                    = var.binance_api_secret
