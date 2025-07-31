@@ -52,7 +52,7 @@ resource "azurerm_function_app_flex_consumption" "functionApps" {
   service_plan_id             = azurerm_service_plan.app_service_plan.id
   
   storage_container_type      = "blobContainer"
-  storage_container_endpoint  = azurerm_storage_container.storageContainer.id
+  storage_container_endpoint  = "${azurerm_storage_account.storageAccount.primary_blob_endpoint}${azurerm_storage_container.storageContainer.name}"
   storage_authentication_type = "StorageAccountConnectionString"
   storage_access_key          = azurerm_storage_account.storageAccount.primary_access_key
   runtime_name                = var.functionAppRuntime
