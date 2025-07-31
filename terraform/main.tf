@@ -45,36 +45,37 @@ resource "azurerm_application_insights" "appInsights" {
   workspace_id = azurerm_log_analytics_workspace.logAnalyticsWorkspace.id
 }
 
-locals {
-  blobStorageAndContainer = "${azurerm_storage_account.storageAccount.primary_blob_endpoint}deploymentpackage"
+resource "azurerm_function_app_flex_consumption" "functionApps" {
+  name                        = var.functionAppName
+  resource_group_name         = azurerm_resource_group.rg.name
+  location                    = var.location
+  service_plan_id             = azurerm_service_plan.app_service_plan.id
+  
+  storage_container_type      = "blobContainer"
+  storage_container_endpoint  = azurerm_storage_container.storageContainer.id
+  storage_authentication_type = "StorageAccountConnectionString"
+  storage_access_key          = azurerm_storage_account.storageAccount.primary_access_key
+  runtime_name                = var.functionAppRuntime
+  runtime_version             = var.functionAppRuntimeVersion
+  maximum_instance_count      = var.maximumInstanceCount
+  instance_memory_in_mb       = var.instanceMemoryMB
+  
+  site_config {
+    application_insights_connection_string = azurerm_application_insights.appInsights.connection_string
+  }
+  timeouts {
+    create = "60m"
+    update = "30m"
+    delete = "30m"
+  }
+  app_settings = {
+    # "AzureWebJobsStorage" = azurerm_storage_account.storageAccount.primary_connection_string //workaround until https://github.com/hashicorp/terraform-provider-azurerm/pull/29099 gets released
+    "AzureWebJobsStorage__accountName" = azurerm_storage_account.storageAccount.name
+    "AZURE_STORAGE_CONNECTION_STRING"       = azurerm_storage_account.botstorage.primary_connection_string
+    "BINANCE_API_KEY"                       = var.binance_api_key
+    "BINANCE_API_SECRET"                    = var.binance_api_secret
+  }
 }
-
-# resource "azurerm_function_app_flex_consumption" "functionApps" {
-#   name                        = var.functionAppName
-#   resource_group_name         = azurerm_resource_group.rg.name
-#   location                    = var.location
-#   service_plan_id             = azurerm_service_plan.app_service_plan.id
-#   storage_container_type      = "blobContainer"
-#   storage_container_endpoint  = local.blobStorageAndContainer
-#   storage_authentication_type = "SystemAssignedIdentity"
-#   runtime_name                = var.functionAppRuntime
-#   runtime_version             = var.functionAppRuntimeVersion
-#   maximum_instance_count      = var.maximumInstanceCount
-#   instance_memory_in_mb       = var.instanceMemoryMB
-#   identity {
-#     type = "SystemAssigned"
-#   }
-#   site_config {
-#     application_insights_connection_string = azurerm_application_insights.appInsights.connection_string
-#   }
-#   app_settings = {
-#     "AzureWebJobsStorage" = azurerm_storage_account.storageAccount.primary_connection_string //workaround until https://github.com/hashicorp/terraform-provider-azurerm/pull/29099 gets released
-#     "AzureWebJobsStorage__accountName" = azurerm_storage_account.storageAccount.name
-#     "AZURE_STORAGE_CONNECTION_STRING"       = azurerm_storage_account.botstorage.primary_connection_string
-#     "BINANCE_API_KEY"                       = var.binance_api_key
-#     "BINANCE_API_SECRET"                    = var.binance_api_secret
-#   }
-# }
 
 # resource "azurerm_role_assignment" "storage_roleassignment" {
 #   scope = azurerm_storage_account.storageAccount.id
