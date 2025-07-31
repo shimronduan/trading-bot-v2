@@ -87,6 +87,7 @@
     timeouts {
       create = "60m"
     }
+    depends_on = [azurerm_function_app_flex_consumption.functionApps]
   }
 
 
