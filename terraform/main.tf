@@ -67,6 +67,9 @@
     identity {
       type = "SystemAssigned"
     }
+    timeouts {
+      create = "60m"
+    }
     app_settings = {
       "AzureWebJobsStorage"                   = azurerm_storage_account.storageAccount.primary_connection_string
       "AZURE_STORAGE_CONNECTION_STRING"       = azurerm_storage_account.botstorage.primary_connection_string
@@ -81,6 +84,9 @@
     role_definition_name = "Storage Blob Data Owner"
     principal_id = azurerm_function_app_flex_consumption.functionApps.identity.0.principal_id
     principal_type = "ServicePrincipal"
+    timeouts {
+      create = "60m"
+    }
   }
 
 
