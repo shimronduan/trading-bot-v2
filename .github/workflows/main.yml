@@ -37,7 +37,8 @@ jobs:
 
       - name: 'Terraform Apply'
         # Pass the environment secret to the Terraform variable
-        run: terraform apply -auto-approve -input=false \
+        run: |-
+          terraform apply -auto-approve -input=false \
           -var="binance_api_key=${{ secrets.BINANCE_API_KEY }}" \
           -var="binance_api_secret=${{ secrets.BINANCE_API_SECRET }}"
         working-directory: ./terraform
