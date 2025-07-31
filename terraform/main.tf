@@ -40,27 +40,27 @@ resource "azurerm_service_plan" "main" {
   sku_name            = "Y1" # Y1 is the code for the Consumption plan
 }
 
-# 5. Create the Linux Function App
-resource "azurerm_linux_function_app" "main" {
-  name                = "trading-bot-app-v2"
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
+# # 5. Create the Linux Function App
+# resource "azurerm_linux_function_app" "main" {
+#   name                = "trading-bot-app-v2"
+#   resource_group_name = azurerm_resource_group.main.name
+#   location            = azurerm_resource_group.main.location
 
-  storage_account_name       = azurerm_storage_account.main.name
-  storage_account_access_key = azurerm_storage_account.main.primary_access_key
-  service_plan_id            = azurerm_service_plan.main.id
+#   storage_account_name       = azurerm_storage_account.main.name
+#   storage_account_access_key = azurerm_storage_account.main.primary_access_key
+#   service_plan_id            = azurerm_service_plan.main.id
 
-  site_config {
-    application_stack {
-      python_version = "3.12"
-    }
-  }
+#   site_config {
+#     application_stack {
+#       python_version = "3.12"
+#     }
+#   }
 
-  app_settings = {
-    "APPINSIGHTS_INSTRUMENTATIONKEY" = azurerm_application_insights.main.instrumentation_key
-    "FUNCTIONS_EXTENSION_VERSION"           = "~4"
-    "AZURE_STORAGE_CONNECTION_STRING"       = azurerm_storage_account.botstorage.primary_connection_string
-    "BINANCE_API_KEY"                       = var.binance_api_key
-    "BINANCE_API_SECRET"                    = var.binance_api_secret
-  }
-}
+#   app_settings = {
+#     "APPINSIGHTS_INSTRUMENTATIONKEY" = azurerm_application_insights.main.instrumentation_key
+#     "FUNCTIONS_EXTENSION_VERSION"           = "~4"
+#     "AZURE_STORAGE_CONNECTION_STRING"       = azurerm_storage_account.botstorage.primary_connection_string
+#     "BINANCE_API_KEY"                       = var.binance_api_key
+#     "BINANCE_API_SECRET"                    = var.binance_api_secret
+#   }
+# }
