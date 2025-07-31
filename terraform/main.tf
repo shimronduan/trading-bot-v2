@@ -1,44 +1,88 @@
 # 1. Create the main resource group for the function app
-resource "azurerm_resource_group" "main" {
-  name     = "trading-bot-v2-rg"
-  location = "Germany West Central"
+resource "azurerm_resource_group" "rg" {
+  location = var.location
+  name     = var.resourceGroupName
 }
 
-# 2. Create the storage account required by the function app
-resource "azurerm_storage_account" "main" {
-  name                     = "tradingbotappv2sa" # Must be globally unique
-  resource_group_name      = azurerm_resource_group.main.name
-  location                 = azurerm_resource_group.main.location
+resource "azurerm_service_plan" "app_service_plan" {
+  name                = var.functionPlanName
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = var.location
+  sku_name            = "FC1"
+  os_type             = "Linux"
+  zone_balancing_enabled = var.zoneRedundant
+}
+
+resource "azurerm_storage_account" "storageAccount" {
+  name                     = var.storageAccountName
+  resource_group_name      = azurerm_resource_group.rg.name
+  location                 = var.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
+  allow_nested_items_to_be_public = false
+  shared_access_key_enabled = false
 }
 
+resource "azurerm_storage_container" "storageContainer" {
+  name                  = "deploymentpackage"
+  storage_account_id  = azurerm_storage_account.storageAccount.id
+  container_access_type = "private"
+}
 
-resource "azurerm_log_analytics_workspace" "main" {
-  name                = "trading-bot-v2-log-analytics"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
+resource "azurerm_log_analytics_workspace" "logAnalyticsWorkspace" {
+  name                = var.logAnalyticsName
+  location            = var.location
+  resource_group_name = azurerm_resource_group.rg.name
   sku                 = "PerGB2018"
   retention_in_days   = 30
 }
 
-# 3. Create the Application Insights for monitoring
-resource "azurerm_application_insights" "main" {
-  name                = "trading-bot-app-v2-insights"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
+resource "azurerm_application_insights" "appInsights" {
+  name                = var.applicationInsightsName
+  location            = var.location
+  resource_group_name = azurerm_resource_group.rg.name
   application_type    = "web"
-  workspace_id        = azurerm_log_analytics_workspace.main.id
+  workspace_id = azurerm_log_analytics_workspace.logAnalyticsWorkspace.id
 }
 
-# 4. Create the Consumption Service Plan
-resource "azurerm_service_plan" "main" {
-  name                = "trading-bot-app-v2-plan"
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
-  os_type             = "Linux"
-  sku_name            = "Y1" # Y1 is the code for the Consumption plan
+locals {
+  blobStorageAndContainer = "${azurerm_storage_account.storageAccount.primary_blob_endpoint}deploymentpackage"
 }
+
+resource "azurerm_function_app_flex_consumption" "functionApps" {
+  name                        = var.functionAppName
+  resource_group_name         = azurerm_resource_group.rg.name
+  location                    = var.location
+  service_plan_id             = azurerm_service_plan.app_service_plan.id
+  storage_container_type      = "blobContainer"
+  storage_container_endpoint  = local.blobStorageAndContainer
+  storage_authentication_type = "SystemAssignedIdentity"
+  runtime_name                = var.functionAppRuntime
+  runtime_version             = var.functionAppRuntimeVersion
+  maximum_instance_count      = var.maximumInstanceCount
+  instance_memory_in_mb       = var.instanceMemoryMB
+  identity {
+    type = "SystemAssigned"
+  }
+  site_config {
+    application_insights_connection_string = azurerm_application_insights.appInsights.connection_string
+  }
+  app_settings = {
+    "AzureWebJobsStorage" = "" //workaround until https://github.com/hashicorp/terraform-provider-azurerm/pull/29099 gets released
+    "AzureWebJobsStorage__accountName" = azurerm_storage_account.storageAccount.name
+    "AZURE_STORAGE_CONNECTION_STRING"       = azurerm_storage_account.botstorage.primary_connection_string
+    "BINANCE_API_KEY"                       = var.binance_api_key
+    "BINANCE_API_SECRET"                    = var.binance_api_secret
+  }
+}
+
+resource "azurerm_role_assignment" "storage_roleassignment" {
+  scope = azurerm_storage_account.storageAccount.id
+  role_definition_name = "Storage Blob Data Owner"
+  principal_id = azurerm_function_app_flex_consumption.functionApps.identity.0.principal_id
+  principal_type = "ServicePrincipal"
+}
+
 
 # # 5. Create the Linux Function App
 # resource "azurerm_linux_function_app" "main" {
