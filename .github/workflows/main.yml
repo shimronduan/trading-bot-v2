@@ -56,33 +56,33 @@ jobs:
         run: terraform apply -auto-approve -input=false
         working-directory: ./terraform
 
-  # deploy:
-  #   runs-on: ubuntu-latest
-  #   name: 🚀 Deploy Function Code
-  #   needs: provision
-  #   environment: prod
-  #   steps:
-  #     - name: 'Checkout GitHub Action'
-  #       uses: actions/checkout@v4
+  deploy:
+    runs-on: ubuntu-latest
+    name: 🚀 Deploy Function Code
+    needs: provision
+    environment: prod
+    steps:
+      - name: 'Checkout GitHub Action'
+        uses: actions/checkout@v4
 
-  #     - name: 'Login to Azure'
-  #       uses: azure/login@v1
-  #       with:
-  #         creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: 'Login to Azure'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-  #     - name: 'Setup Python Environment'
-  #       uses: actions/setup-python@v5
-  #       with:
-  #         python-version: ${{ env.PYTHON_VERSION }}
+      - name: 'Setup Python Environment'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
-  #     - name: 'Install Dependencies and Package'
-  #       run: |
-  #         python -m pip install --upgrade pip
-  #         pip install -r requirements.txt --target=".python_packages/lib/site-packages"
-  #         zip -r deployment.zip . -x "terraform/*" ".git/*"
+      - name: 'Install Dependencies and Package'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt --target=".python_packages/lib/site-packages"
+          zip -r deployment.zip . -x "terraform/*" ".git/*"
 
-  #     - name: 'Deploy to Azure Functions'
-  #       uses: Azure/functions-action@v1
-  #       with:
-  #         app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-  #         package: 'deployment.zip'
+      - name: 'Deploy to Azure Functions'
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+          package: 'deployment.zip'
