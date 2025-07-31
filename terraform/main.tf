@@ -66,8 +66,6 @@ resource "azurerm_function_app_flex_consumption" "functionApps" {
   }
   app_settings = {
     "AzureWebJobsStorage"                   = azurerm_storage_account.storageAccount.primary_connection_string
-    "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING" = azurerm_storage_account.storageAccount.primary_connection_string
-    "WEBSITE_CONTENTSHARE"                  = azurerm_storage_container.storageContainer.name
     "AZURE_STORAGE_CONNECTION_STRING"       = azurerm_storage_account.botstorage.primary_connection_string
     "BINANCE_API_KEY"                       = var.binance_api_key
     "BINANCE_API_SECRET"                    = var.binance_api_secret
