@@ -20,7 +20,7 @@
     account_tier             = "Standard"
     account_replication_type = "LRS"
     allow_nested_items_to_be_public = false
-    shared_access_key_enabled = true
+    shared_access_key_enabled = false
   }
 
   resource "azurerm_storage_container" "storageContainer" {
@@ -56,7 +56,7 @@
     service_plan_id             = azurerm_service_plan.app_service_plan.id
     storage_container_type      = "blobContainer"
     storage_container_endpoint  = local.blobStorageAndContainer
-    storage_authentication_type = "StorageAccountConnectionString"
+    storage_authentication_type = "SystemAssignedIdentity"
     runtime_name                = var.functionAppRuntime
     runtime_version             = var.functionAppRuntimeVersion
     maximum_instance_count      = var.maximumInstanceCount
@@ -64,7 +64,9 @@
     site_config {
       application_insights_connection_string = azurerm_application_insights.appInsights.connection_string
     }
-
+    identity {
+      type = "SystemAssigned"
+    }
     app_settings = {
       "AzureWebJobsStorage"                   = azurerm_storage_account.storageAccount.primary_connection_string
       "AZURE_STORAGE_CONNECTION_STRING"       = azurerm_storage_account.botstorage.primary_connection_string
@@ -74,12 +76,12 @@
   }
 
 
-  # resource "azurerm_role_assignment" "storage_roleassignment" {
-  #   scope = azurerm_storage_account.storageAccount.id
-  #   role_definition_name = "Storage Blob Data Owner"
-  #   principal_id = azurerm_function_app_flex_consumption.functionApps.identity.0.principal_id
-  #   principal_type = "ServicePrincipal"
-  # }
+  resource "azurerm_role_assignment" "storage_roleassignment" {
+    scope = azurerm_storage_account.storageAccount.id
+    role_definition_name = "Storage Blob Data Owner"
+    principal_id = azurerm_function_app_flex_consumption.functionApps.identity.0.principal_id
+    principal_type = "ServicePrincipal"
+  }
 
 
   # # 5. Create the Linux Function App
