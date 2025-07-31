@@ -36,12 +36,23 @@ jobs:
         working-directory: ./terraform
 
       - name: 'Terraform Apply'
-        # Pass the environment secret to the Terraform variable
-        run: |
-          terraform apply -auto-approve -input=false <<EOF
-          -var="binance_api_key=${{ secrets.BINANCE_API_KEY }}"
-          -var="binance_api_secret=${{ secrets.BINANCE_API_SECRET }}"
-          EOF
+        env:
+          TF_VAR_binance_api_key: ${{ secrets.BINANCE_API_KEY }}
+          TF_VAR_binance_api_secret: ${{ secrets.BINANCE_API_SECRET }}
+          TF_VAR_subscriptionId: ${{ env.SUBSCRIPTION_ID }}
+          # TF_VAR_resourceGroupName: ${{ env.RESOURCE_GROUP_NAME }}
+          # TF_VAR_location: ${{ env.LOCATION }}
+          # TF_VAR_applicationInsightsName: ${{ env.APPLICATION_INSIGHTS_NAME }}
+          # TF_VAR_logAnalyticsName: ${{ env.LOG_ANALYTICS_NAME }}
+          # TF_VAR_functionAppName: ${{ env.FUNCTION_APP_NAME }}
+          # TF_VAR_functionPlanName: ${{ env.FUNCTION_PLAN_NAME }}
+          # TF_VAR_storageAccountName: ${{ env.STORAGE_ACCOUNT_NAME }}
+          # TF_VAR_maximumInstanceCount: ${{ env.MAXIMUM_INSTANCE_COUNT }}
+          # TF_VAR_instanceMemoryMB: ${{ env.INSTANCE_MEMORY_MB }}
+          # TF_VAR_functionAppRuntime: ${{ env.FUNCTION_APP_RUNTIME }}
+          # TF_VAR_functionAppRuntimeVersion: ${{ env.FUNCTION_APP_RUNTIME_VERSION }}
+          # TF_VAR_zoneRedundant: ${{ env.ZONE_REDUNDANT }}
+        run: terraform apply -auto-approve -input=false
         working-directory: ./terraform
 
   deploy:

@@ -9,9 +9,9 @@ variable "binance_api_secret" {
   sensitive   = true 
 }
 
-# variable "subscriptionId" {
-#   description = "The Azure Subscription ID in which all resources in this example should be created."
-# }
+variable "subscriptionId" {
+  description = "The Azure Subscription ID in which all resources in this example should be created."
+}
 
 # variable "resourceGroupName" {
 #   description = "The Azure Resource Group name in which all resources in this example should be created."
