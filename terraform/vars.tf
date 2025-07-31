@@ -57,7 +57,7 @@ variable "functionAppRuntime" {
 }
 
 variable "functionAppRuntimeVersion" {
-  default = "9.0"
+  default = "3.12"
   description = "The runtime and version for your app. One of the following: '3.10', '3.11', '7.4', '8.0', '10', '11', '17', '20', '21', '22'"
 }
 variable "zoneRedundant" {
