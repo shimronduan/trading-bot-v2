@@ -64,6 +64,11 @@ resource "azurerm_function_app_flex_consumption" "functionApps" {
   site_config {
     application_insights_connection_string = azurerm_application_insights.appInsights.connection_string
   }
+
+  identity { # Ensure system-assigned identity is enabled
+    type = "SystemAssigned"
+  }
+
   app_settings = {
     "AzureWebJobsStorage"                   = azurerm_storage_account.storageAccount.primary_connection_string
     "AZURE_STORAGE_CONNECTION_STRING"       = azurerm_storage_account.botstorage.primary_connection_string
@@ -73,11 +78,22 @@ resource "azurerm_function_app_flex_consumption" "functionApps" {
 }
 
 resource "azurerm_role_assignment" "storage_roleassignment" {
-  scope = azurerm_storage_account.storageAccount.id
+  scope                = azurerm_storage_account.storageAccount.id
   role_definition_name = "Storage Blob Data Owner"
-  principal_id = azurerm_function_app_flex_consumption.functionApps.identity.0.principal_id
-  principal_type = "ServicePrincipal"
+  principal_id         = azurerm_function_app_flex_consumption.functionApps.identity[0].principal_id
+  
+  # Add a dependency to ensure the identity is created before the role is assigned
+  depends_on = [
+    azurerm_function_app_flex_consumption.functionApps
+  ]
 }
+
+# resource "azurerm_role_assignment" "storage_roleassignment" {
+#   scope = azurerm_storage_account.storageAccount.id
+#   role_definition_name = "Storage Blob Data Owner"
+#   principal_id = azurerm_function_app_flex_consumption.functionApps.identity.0.principal_id
+#   principal_type = "ServicePrincipal"
+# }
 
 
 # # 5. Create the Linux Function App
