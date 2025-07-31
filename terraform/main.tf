@@ -1,36 +1,3 @@
-# Configure the Terraform Azure provider and the remote state backend
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~>3.90" # Pinned to a stable version range
-    }
-  }
-  backend "azurerm" {
-    # Replace these with the names from your one-time setup
-    resource_group_name  = "tfstate-rg"
-    storage_account_name = "tfstatesa17329"
-    container_name       = "trading-bot-v2-tfstate"
-    key                  = "prod.terraform.tfstate"
-  }
-}
-
-variable "binance_api_key" {
-  description = "The API key for the Binance account."
-  type        = string
-  sensitive   = true 
-}
-variable "binance_api_secret" {
-  description = "The API secret for the Binance account."
-  type        = string
-  sensitive   = true 
-}
-
-# Configure the Azure Provider
-provider "azurerm" {
-  features {}
-}
-
 # 1. Create the main resource group for the function app
 resource "azurerm_resource_group" "main" {
   name     = "trading-bot-v2-rg"
@@ -46,24 +13,6 @@ resource "azurerm_storage_account" "main" {
   account_replication_type = "LRS"
 }
 
-# 2. Create the storage account required by the function app
-resource "azurerm_storage_account" "botstorage" {
-  name                     = "tradingbotv2sa" # Must be globally unique
-  resource_group_name      = azurerm_resource_group.main.name
-  location                 = azurerm_resource_group.main.location
-  account_tier             = "Standard"
-  account_replication_type = "LRS"
-}
-
-resource "azurerm_storage_queue" "orders" {
-  name                 = "orders"
-  storage_account_name = azurerm_storage_account.botstorage.name
-}
-
-resource "azurerm_storage_table" "takeprofitandstoploss" {
-  name                 = "TakeProfitAndStopLoss"
-  storage_account_name = azurerm_storage_account.botstorage.name
-}
 
 resource "azurerm_log_analytics_workspace" "main" {
   name                = "trading-bot-v2-log-analytics"
