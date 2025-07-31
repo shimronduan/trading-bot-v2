@@ -19,8 +19,6 @@ resource "azurerm_storage_account" "storageAccount" {
   location                 = var.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
-  allow_nested_items_to_be_public = false
-  shared_access_key_enabled = false
 }
 
 resource "azurerm_storage_container" "storageContainer" {
