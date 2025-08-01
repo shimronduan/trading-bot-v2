@@ -12,5 +12,5 @@ variable "binance_api_secret" {
 variable "app_version" {
   description = "The version identifier for the trading bot."
   type        = string
-  default     = "v2"
+  default     = "v3"
 }
