@@ -12,7 +12,7 @@ resource "azurerm_storage_queue" "orders" {
   storage_account_name = azurerm_storage_account.botstorage.name
 }
 
-resource "azurerm_storage_queue" "orders" {
+resource "azurerm_storage_queue" "futures" {
   name                 = "futures"
   storage_account_name = azurerm_storage_account.botstorage.name
 }
