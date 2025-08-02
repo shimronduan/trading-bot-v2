@@ -12,6 +12,11 @@ resource "azurerm_storage_queue" "orders" {
   storage_account_name = azurerm_storage_account.botstorage.name
 }
 
+resource "azurerm_storage_queue" "orders" {
+  name                 = "futures"
+  storage_account_name = azurerm_storage_account.botstorage.name
+}
+
 resource "azurerm_storage_table" "takeprofitandstoploss" {
   name                 = "TakeProfitAndStopLoss"
   storage_account_name = azurerm_storage_account.botstorage.name
