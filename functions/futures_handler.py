@@ -1,11 +1,10 @@
 from trading_config import SYMBOL
 from utils.client_factory import create_futures_client
 from utils.storage_factory import create_table_storage_client, create_queue_client
-import json
 import base64
 import logging
 
-def handle_futures(signal_type, ticker, price, atr):
+def handle_futures(signal_type):
     client = create_futures_client()
     ats_client = create_table_storage_client()
     response_message = ""

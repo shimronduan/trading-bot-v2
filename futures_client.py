@@ -3,6 +3,7 @@ import time
 from binance.um_futures import UMFutures
 from binance.error import ClientError
 
+from technical_analysis import TechnicalAnalysis
 from trading_config import LEVERAGE, STOP_LOSS_PERCENT, SYMBOL, WALLET_ALLOCATION
 
 class FuturesClient:
@@ -76,11 +77,14 @@ class FuturesClient:
             
         return rounded_quantity
 
-    def execute_trade_with_sl_tp(self, side: str, quantity: float, records: list, atr: float = 0.0):
+    def execute_trade_with_sl_tp(self, side: str, quantity: float, records: list):
         """
         Sets leverage, places the MARKET order, confirms the fill price using the correct method,
         and then places the TAKE_PROFIT and STOP_LOSS orders.
         """
+        ta_calculator = TechnicalAnalysis(client=self.client)
+        atr = ta_calculator.get_atr(symbol=SYMBOL)
+        
         # 1. *** NEW: Cancel all existing open orders for the symbol to prevent interference ***
         try:
             logging.info(f"Cancelling all existing open orders for {SYMBOL} to ensure a clean slate.")
