@@ -84,7 +84,7 @@ class FuturesClient:
         """
         ta_calculator = TechnicalAnalysis(client=self.client)
         atr = ta_calculator.get_atr(symbol=SYMBOL)
-        
+
         # 1. *** NEW: Cancel all existing open orders for the symbol to prevent interference ***
         try:
             logging.info(f"Cancelling all existing open orders for {SYMBOL} to ensure a clean slate.")
@@ -153,9 +153,10 @@ class FuturesClient:
         tp_levels = []
         for record in tp_list:
             try:
+                atr_multiplier = 1 + (float(record.get('percent', 0)) / 100)
                 profit_percent = float(record.get('percent', 0))/100  # Default to 0.2% if not specified
                 close_fraction = float(record.get('close_fraction', 0))/100  # Default to 25% if not specified
-                tp_levels.append({"profit_percent": profit_percent, "close_fraction": close_fraction})
+                tp_levels.append({"atr_multiplier": atr_multiplier, "close_fraction": close_fraction})
             except ValueError as e:
                 logging.error(f"Invalid TP record: {record}. Error: {e}")
 
@@ -175,7 +176,12 @@ class FuturesClient:
         min_notional = 5.0  # Minimum notional value in USDT
         for i, level in enumerate(tp_levels):
             tp_quantity = round(quantity * level['close_fraction'], quantity_decimals)
-            tp_price = f"{entry_price * (1 + level['profit_percent']):.{price_decimals}f}" if side == 'BUY' else f"{entry_price * (1 - level['profit_percent']):.{price_decimals}f}"
+            if atr is None or atr <= 0:
+                logging.warning("ATR value is not valid. Skipping ATR-based Take Profit orders.")
+                continue
+
+            price_change = level['atr_multiplier'] * atr
+            tp_price = f"{entry_price + price_change:.{price_decimals}f}" if side == 'BUY' else f"{entry_price - price_change:.{price_decimals}f}"
 
             # Skip orders that do not meet the minimum notional value
             if tp_quantity * float(tp_price) < min_notional:
@@ -195,19 +201,26 @@ class FuturesClient:
         # --- Place final Take Profit for the remaining amount ---
         # This ensures any rounding differences are handled in the last TP
         if len(last_tp) > 0 and remaining_quantity > 0:
-            tp3_price = f"{entry_price * (1 + last_tp[0]):.{price_decimals}f}" if side == 'BUY' else f"{entry_price * (1 - last_tp[0]):.{price_decimals}f}"
+            atr_multiplier = 1 + (last_tp[0] / 100)
+            if atr is not None:
+                price_change = atr_multiplier * atr
 
-            if remaining_quantity * float(tp3_price) >= min_notional:
-                self.client.new_order(
-                    symbol=SYMBOL,
-                    side=close_side,
-                    type='TAKE_PROFIT_MARKET',
-                    stopPrice=tp3_price,
-                    quantity=round(remaining_quantity, quantity_decimals)
-                )
-                logging.info(f"Take Profit order #3 (remaining) placed: close {round(remaining_quantity, quantity_decimals)} at {tp3_price}.")
+                # Calculate TP price using ATR
+                tp3_price = f"{entry_price + price_change:.{price_decimals}f}" if side == 'BUY' else f"{entry_price - price_change:.{price_decimals}f}"
+
+                if remaining_quantity * float(tp3_price) >= min_notional:
+                    self.client.new_order(
+                        symbol=SYMBOL,
+                        side=close_side,
+                        type='TAKE_PROFIT_MARKET',
+                        stopPrice=tp3_price,
+                        quantity=round(remaining_quantity, quantity_decimals)
+                    )
+                    logging.info(f"Take Profit order #3 (remaining) placed: close {round(remaining_quantity, quantity_decimals)} at {tp3_price}.")
+                else:
+                    logging.warning(f"Skipping final Take Profit order as its notional value is below the minimum required ({min_notional} USDT).")
             else:
-                logging.warning(f"Skipping final Take Profit order as its notional value is below the minimum required ({min_notional} USDT).")
+                logging.warning("ATR value is not valid. Skipping final ATR-based Take Profit order.")
         
         # --- Place a single Stop Loss for the entire position ---
         if side == 'BUY':
