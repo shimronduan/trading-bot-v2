@@ -5,7 +5,10 @@
 azure-functions
 binance-connector
 azure-data-tables
-pandas
-ta
 binance-futures-connector
 azure-storage-queue
+pandas
+pandas-ta
+ta
+numpy<2.0
+setuptools

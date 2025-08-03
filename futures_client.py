@@ -3,6 +3,7 @@ import time
 from binance.um_futures import UMFutures
 from binance.error import ClientError
 
+from technical_analysis import TechnicalAnalysis
 from trading_config import LEVERAGE, STOP_LOSS_PERCENT, SYMBOL, WALLET_ALLOCATION
 
 class FuturesClient:
@@ -76,11 +77,14 @@ class FuturesClient:
             
         return rounded_quantity
 
-    def execute_trade_with_sl_tp(self, side: str, quantity: float, records: list = None):
+    def execute_trade_with_sl_tp(self, side: str, quantity: float, records: list):
         """
         Sets leverage, places the MARKET order, confirms the fill price using the correct method,
         and then places the TAKE_PROFIT and STOP_LOSS orders.
         """
+        ta_calculator = TechnicalAnalysis(client=self.client)
+        atr = ta_calculator.get_atr(symbol=SYMBOL)
+        
         # 1. *** NEW: Cancel all existing open orders for the symbol to prevent interference ***
         try:
             logging.info(f"Cancelling all existing open orders for {SYMBOL} to ensure a clean slate.")
@@ -211,34 +215,24 @@ class FuturesClient:
         else: # SELL
             sl_price = f"{entry_price * (1 + STOP_LOSS_PERCENT):.{price_decimals}f}"
 
+        # --- Place a single Trailing Stop Loss for the entire position ---
+        if atr is not None and entry_price > 0:
+            # Calculate callbackRate as a percentage of entry price
+            callback_rate = round((atr*1.5 / entry_price) * 100, 2)
+            # Binance minimum callbackRate is usually 0.1, so ensure it's not below that
+            callback_rate = max(callback_rate, 0.1)
+        else:
+            callback_rate = 0.5  # fallback to default
+
         self.client.new_order(
             symbol=SYMBOL,
             side=close_side,
             type='TRAILING_STOP_MARKET',
             quantity=quantity,
-            callbackRate=0.5,
+            callbackRate=callback_rate,
             reduceOnly=True
         )
 
-        # atr = 0.00194
-        #  # --- Place a single Trailing Stop Loss for the entire position ---
-        # if atr is not None and entry_price > 0:
-        #     # Calculate callbackRate as a percentage of entry price
-        #     callback_rate = round((atr / entry_price) * 100, 2)
-        #     # Binance minimum callbackRate is usually 0.1, so ensure it's not below that
-        #     callback_rate = max(callback_rate, 0.1)
-        # else:
-        #     callback_rate = 0.5  # fallback to default
-
-        # self.client.new_order(
-        #     symbol=SYMBOL,
-        #     side=close_side,
-        #     type='TRAILING_STOP_MARKET',
-        #     quantity=quantity,
-        #     callbackRate=callback_rate,
-        #     reduceOnly=True
-        # )
-        
         return f"Success: {side} position opened for {quantity} {SYMBOL} at ~{entry_price}. Multiple TPs and one SL have been set."
     
     def close_all_for_symbol(self, symbol: str):
