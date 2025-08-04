@@ -147,35 +147,46 @@ class FuturesClient:
         # --- Define Take Profit levels ---
         tp_list = [record for record in records if str(record.get('PartitionKey', '')).lower() == 'tp'  and str(record.get('close_fraction', '')).lower() != '']
         sl_list = [record for record in records if str(record.get('PartitionKey', '')).lower() == 'sl'  and str(record.get('close_fraction', '')).lower() != '']
-        last_tp = [float(record.get('percent', 0))/100 for record in records if str(record.get('PartitionKey', '')).lower() == 'tp' and str(record.get('close_fraction', '')).lower() == '']
-        last_sl = [float(record.get('percent', 0))/100 for record in records if str(record.get('PartitionKey', '')).lower() == 'sl' and str(record.get('close_fraction', '')).lower() == '']
-            
+        last_tp = [float(record.get('atr_multiple', 0)) for record in records if str(record.get('PartitionKey', '')).lower() == 'tp' and str(record.get('close_fraction', '')).lower() == '']
+        last_sl = [float(record.get('atr_multiple', 0)) for record in records if str(record.get('PartitionKey', '')).lower() == 'sl' and str(record.get('close_fraction', '')).lower() == '']
+
         tp_levels = []
         for record in tp_list:
             try:
-                profit_percent = float(record.get('percent', 0))/100  # Default to 0.2% if not specified
-                close_fraction = float(record.get('close_fraction', 0))/100  # Default to 25% if not specified
-                tp_levels.append({"profit_percent": profit_percent, "close_fraction": close_fraction})
+                atr_multiple = float(record.get('atr_multiple', 0))
+                close_fraction = float(record.get('close_fraction', 0))/100  # Convert percentage to decimal
+                tp_levels.append({"atr_multiple": atr_multiple, "close_fraction": close_fraction})
             except ValueError as e:
                 logging.error(f"Invalid TP record: {record}. Error: {e}")
 
         sl_levels = []
         for record in sl_list:
             try:
-                profit_percent = float(record.get('percent', 0))/100  # Default to 0.2% if not specified
-                close_fraction = float(record.get('close_fraction', 0))/100  # Default to 25% if not specified
-                sl_levels.append({"profit_percent": profit_percent, "close_fraction": close_fraction})
+                atr_multiple = float(record.get('atr_multiple', 0))
+                close_fraction = float(record.get('close_fraction', 0))/100  # Convert percentage to decimal
+                sl_levels.append({"atr_multiple": atr_multiple, "close_fraction": close_fraction})
             except ValueError as e:
-                logging.error(f"Invalid TP record: {record}. Error: {e}")
+                logging.error(f"Invalid SL record: {record}. Error: {e}")
 
         remaining_quantity = quantity
         
         # --- Place multiple Take Profit orders ---
         # Ensure each take profit order meets the minimum notional value
         min_notional = 5.0  # Minimum notional value in USDT
+        
+        # Safety check for ATR value
+        if atr is None or atr <= 0:
+            logging.warning("ATR value is None or invalid. Using fallback ATR calculation.")
+            # Fallback: use 1% of entry price as ATR estimate
+            atr = entry_price * 0.01
+            
         for i, level in enumerate(tp_levels):
             tp_quantity = round(quantity * level['close_fraction'], quantity_decimals)
-            tp_price = f"{entry_price * (1 + level['profit_percent']):.{price_decimals}f}" if side == 'BUY' else f"{entry_price * (1 - level['profit_percent']):.{price_decimals}f}"
+            # Calculate TP price using ATR: entry_price +/- (atr * atr_multiple)
+            if side == 'BUY':
+                tp_price = f"{entry_price + (atr * level['atr_multiple']):.{price_decimals}f}"
+            else:  # SELL
+                tp_price = f"{entry_price - (atr * level['atr_multiple']):.{price_decimals}f}"
 
             # Skip orders that do not meet the minimum notional value
             if tp_quantity * float(tp_price) < min_notional:
@@ -195,7 +206,11 @@ class FuturesClient:
         # --- Place final Take Profit for the remaining amount ---
         # This ensures any rounding differences are handled in the last TP
         if len(last_tp) > 0 and remaining_quantity > 0:
-            tp3_price = f"{entry_price * (1 + last_tp[0]):.{price_decimals}f}" if side == 'BUY' else f"{entry_price * (1 - last_tp[0]):.{price_decimals}f}"
+            # Calculate final TP price using ATR: entry_price +/- (atr * atr_multiple)
+            if side == 'BUY':
+                tp3_price = f"{entry_price + (atr * last_tp[0]):.{price_decimals}f}"
+            else:  # SELL
+                tp3_price = f"{entry_price - (atr * last_tp[0]):.{price_decimals}f}"
 
             if remaining_quantity * float(tp3_price) >= min_notional:
                 self.client.new_order(
