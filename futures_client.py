@@ -148,7 +148,7 @@ class FuturesClient:
         tp_list = [record for record in tp_sl_configs if str(record.get('PartitionKey', '')).lower() == 'tp'  and str(record.get('close_fraction', '')).lower() != '']
         sl_list = [record for record in tp_sl_configs if str(record.get('PartitionKey', '')).lower() == 'sl'  and str(record.get('close_fraction', '')).lower() != '']
         last_tp_atr = [float(record.get('atr_multiple', 0)) for record in tp_sl_configs if str(record.get('PartitionKey', '')).lower() == 'tp' and str(record.get('close_fraction', '')).lower() == '']
-        last_sl = [float(record.get('atr_multiple', 0)) for record in tp_sl_configs if str(record.get('PartitionKey', '')).lower() == 'sl' and str(record.get('close_fraction', '')).lower() == '']
+        last_sl_atr = [float(record.get('atr_multiple', 0)) for record in tp_sl_configs if str(record.get('PartitionKey', '')).lower() == 'sl' and str(record.get('close_fraction', '')).lower() == '']
 
         tp_levels = []
         for record in tp_list:
