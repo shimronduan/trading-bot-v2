@@ -77,7 +77,7 @@ class FuturesClient:
             
         return rounded_quantity
 
-    def execute_trade_with_sl_tp(self, side: str, quantity: float, records: list):
+    def execute_trade_with_sl_tp(self, side: str, quantity: float, tp_sl_configs: list):
         """
         Sets leverage, places the MARKET order, confirms the fill price using the correct method,
         and then places the TAKE_PROFIT and STOP_LOSS orders.
@@ -145,10 +145,10 @@ class FuturesClient:
         quantity_decimals = int(symbol_info.get('quantityPrecision', 0))
 
         # --- Define Take Profit levels ---
-        tp_list = [record for record in records if str(record.get('PartitionKey', '')).lower() == 'tp'  and str(record.get('close_fraction', '')).lower() != '']
-        sl_list = [record for record in records if str(record.get('PartitionKey', '')).lower() == 'sl'  and str(record.get('close_fraction', '')).lower() != '']
-        last_tp = [float(record.get('atr_multiple', 0)) for record in records if str(record.get('PartitionKey', '')).lower() == 'tp' and str(record.get('close_fraction', '')).lower() == '']
-        last_sl = [float(record.get('atr_multiple', 0)) for record in records if str(record.get('PartitionKey', '')).lower() == 'sl' and str(record.get('close_fraction', '')).lower() == '']
+        tp_list = [record for record in tp_sl_configs if str(record.get('PartitionKey', '')).lower() == 'tp'  and str(record.get('close_fraction', '')).lower() != '']
+        sl_list = [record for record in tp_sl_configs if str(record.get('PartitionKey', '')).lower() == 'sl'  and str(record.get('close_fraction', '')).lower() != '']
+        last_tp_atr = [float(record.get('atr_multiple', 0)) for record in tp_sl_configs if str(record.get('PartitionKey', '')).lower() == 'tp' and str(record.get('close_fraction', '')).lower() == '']
+        last_sl = [float(record.get('atr_multiple', 0)) for record in tp_sl_configs if str(record.get('PartitionKey', '')).lower() == 'sl' and str(record.get('close_fraction', '')).lower() == '']
 
         tp_levels = []
         for record in tp_list:
@@ -183,10 +183,7 @@ class FuturesClient:
         for i, level in enumerate(tp_levels):
             tp_quantity = round(quantity * level['close_fraction'], quantity_decimals)
             # Calculate TP price using ATR: entry_price +/- (atr * atr_multiple)
-            if side == 'BUY':
-                tp_price = f"{entry_price + (atr * level['atr_multiple']):.{price_decimals}f}"
-            else:  # SELL
-                tp_price = f"{entry_price - (atr * level['atr_multiple']):.{price_decimals}f}"
+            tp_price = f"{entry_price + (atr * level['atr_multiple']) if side == 'BUY' else entry_price - (atr * level['atr_multiple']):.{price_decimals}f}"
 
             # Skip orders that do not meet the minimum notional value
             if tp_quantity * float(tp_price) < min_notional:
@@ -205,22 +202,19 @@ class FuturesClient:
 
         # --- Place final Take Profit for the remaining amount ---
         # This ensures any rounding differences are handled in the last TP
-        if len(last_tp) > 0 and remaining_quantity > 0:
+        if len(last_tp_atr) > 0 and remaining_quantity > 0:
             # Calculate final TP price using ATR: entry_price +/- (atr * atr_multiple)
-            if side == 'BUY':
-                tp3_price = f"{entry_price + (atr * last_tp[0]):.{price_decimals}f}"
-            else:  # SELL
-                tp3_price = f"{entry_price - (atr * last_tp[0]):.{price_decimals}f}"
+            last_tp_price = f"{entry_price + (atr * last_tp_atr[0]) if side == 'BUY' else entry_price - (atr * last_tp_atr[0]):.{price_decimals}f}"
 
-            if remaining_quantity * float(tp3_price) >= min_notional:
+            if remaining_quantity * float(last_tp_price) >= min_notional:
                 self.client.new_order(
                     symbol=SYMBOL,
                     side=close_side,
                     type='TAKE_PROFIT_MARKET',
-                    stopPrice=tp3_price,
+                    stopPrice=last_tp_price,
                     quantity=round(remaining_quantity, quantity_decimals)
                 )
-                logging.info(f"Take Profit order #3 (remaining) placed: close {round(remaining_quantity, quantity_decimals)} at {tp3_price}.")
+                logging.info(f"Take Profit order #3 (remaining) placed: close {round(remaining_quantity, quantity_decimals)} at {last_tp_price}.")
             else:
                 logging.warning(f"Skipping final Take Profit order as its notional value is below the minimum required ({min_notional} USDT).")
         
