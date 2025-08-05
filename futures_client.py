@@ -149,7 +149,7 @@ class FuturesClient:
         sl_list = [record for record in tp_sl_configs if str(record.get('PartitionKey', '')).lower() == 'sl'  and str(record.get('close_fraction', '')).lower() != '']
         last_tp_atr = [float(record.get('atr_multiple', 0)) for record in tp_sl_configs if str(record.get('PartitionKey', '')).lower() == 'tp' and str(record.get('close_fraction', '')).lower() == '']
         last_sl_atr = [float(record.get('atr_multiple', 0)) for record in tp_sl_configs if str(record.get('PartitionKey', '')).lower() == 'sl' and str(record.get('close_fraction', '')).lower() == '']
-        trailing_sl_atr = [float(record.get('atr_multiple', 0)) for record in tp_sl_configs if str(record.get('PartitionKey', '')).lower() == 'tp' and str(record.get('close_fraction', '')).lower() == '']
+        trailing_sl_atr = [float(record.get('atr_multiple', 0)) for record in tp_sl_configs if str(record.get('PartitionKey', '')).lower() == 'tsl' and str(record.get('close_fraction', '')).lower() == '']
 
         tp_levels = []
         for record in tp_list:
@@ -219,7 +219,7 @@ class FuturesClient:
             else:
                 logging.warning(f"Skipping final Take Profit order as its notional value is below the minimum required ({min_notional} USDT).")
         
-        if len(trailing_sl_atr) > 0:
+        if len(trailing_sl_atr) > 0 :
             # --- Place a single Trailing Stop Loss for the entire position ---
             if atr is not None and entry_price > 0:
                 # Calculate callbackRate as a percentage of entry price
