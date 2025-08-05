@@ -149,6 +149,7 @@ class FuturesClient:
         sl_list = [record for record in tp_sl_configs if str(record.get('PartitionKey', '')).lower() == 'sl'  and str(record.get('close_fraction', '')).lower() != '']
         last_tp_atr = [float(record.get('atr_multiple', 0)) for record in tp_sl_configs if str(record.get('PartitionKey', '')).lower() == 'tp' and str(record.get('close_fraction', '')).lower() == '']
         last_sl_atr = [float(record.get('atr_multiple', 0)) for record in tp_sl_configs if str(record.get('PartitionKey', '')).lower() == 'sl' and str(record.get('close_fraction', '')).lower() == '']
+        trailing_sl_atr = [float(record.get('atr_multiple', 0)) for record in tp_sl_configs if str(record.get('PartitionKey', '')).lower() == 'tp' and str(record.get('close_fraction', '')).lower() == '']
 
         tp_levels = []
         for record in tp_list:
@@ -218,23 +219,23 @@ class FuturesClient:
             else:
                 logging.warning(f"Skipping final Take Profit order as its notional value is below the minimum required ({min_notional} USDT).")
         
-        # --- Place a single Trailing Stop Loss for the entire position ---
-        if atr is not None and entry_price > 0:
-            # Calculate callbackRate as a percentage of entry price
-            callback_rate = round((atr*1.5 / entry_price) * 100, 2)
-            # Binance minimum callbackRate is usually 0.1, so ensure it's not below that
-            callback_rate = max(callback_rate, 0.1)
-        else:
-            callback_rate = 0.5  # fallback to default
-
-        self.client.new_order(
-            symbol=SYMBOL,
-            side=close_side,
-            type='TRAILING_STOP_MARKET',
-            quantity=quantity,
-            callbackRate=callback_rate,
-            reduceOnly=True
-        )
+        if len(trailing_sl_atr) > 0:
+            # --- Place a single Trailing Stop Loss for the entire position ---
+            if atr is not None and entry_price > 0:
+                # Calculate callbackRate as a percentage of entry price
+                callback_rate = round((atr*trailing_sl_atr[0] / entry_price) * 100, 2)
+                # Binance minimum callbackRate is usually 0.1, so ensure it's not below that
+                callback_rate = max(callback_rate, 0.1)
+            else:
+                callback_rate = 0.5  # fallback to default
+            self.client.new_order(
+                symbol=SYMBOL,
+                side=close_side,
+                type='TRAILING_STOP_MARKET',
+                quantity=quantity,
+                callbackRate=callback_rate,
+                reduceOnly=True
+            )
 
         return f"Success: {side} position opened for {quantity} {SYMBOL} at ~{entry_price}. Multiple TPs and one SL have been set."
     
