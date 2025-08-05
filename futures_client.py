@@ -77,7 +77,7 @@ class FuturesClient:
             
         return rounded_quantity
 
-    def execute_trade_with_sl_tp(self, side: str, quantity: float, records: list):
+    def execute_trade_with_sl_tp(self, side: str, quantity: float, tp_sl_configs: list):
         """
         Sets leverage, places the MARKET order, confirms the fill price using the correct method,
         and then places the TAKE_PROFIT and STOP_LOSS orders.
@@ -145,37 +145,46 @@ class FuturesClient:
         quantity_decimals = int(symbol_info.get('quantityPrecision', 0))
 
         # --- Define Take Profit levels ---
-        tp_list = [record for record in records if str(record.get('PartitionKey', '')).lower() == 'tp'  and str(record.get('close_fraction', '')).lower() != '']
-        sl_list = [record for record in records if str(record.get('PartitionKey', '')).lower() == 'sl'  and str(record.get('close_fraction', '')).lower() != '']
-        last_tp = [float(record.get('percent', 0))/100 for record in records if str(record.get('PartitionKey', '')).lower() == 'tp' and str(record.get('close_fraction', '')).lower() == '']
-        last_sl = [float(record.get('percent', 0))/100 for record in records if str(record.get('PartitionKey', '')).lower() == 'sl' and str(record.get('close_fraction', '')).lower() == '']
-            
+        tp_list = [record for record in tp_sl_configs if str(record.get('PartitionKey', '')).lower() == 'tp'  and str(record.get('close_fraction', '')).lower() != '']
+        sl_list = [record for record in tp_sl_configs if str(record.get('PartitionKey', '')).lower() == 'sl'  and str(record.get('close_fraction', '')).lower() != '']
+        last_tp_atr = [float(record.get('atr_multiple', 0)) for record in tp_sl_configs if str(record.get('PartitionKey', '')).lower() == 'tp' and str(record.get('close_fraction', '')).lower() == '']
+        last_sl_atr = [float(record.get('atr_multiple', 0)) for record in tp_sl_configs if str(record.get('PartitionKey', '')).lower() == 'sl' and str(record.get('close_fraction', '')).lower() == '']
+        trailing_sl_atr = [float(record.get('atr_multiple', 0)) for record in tp_sl_configs if str(record.get('PartitionKey', '')).lower() == 'tsl' and str(record.get('close_fraction', '')).lower() == '']
+
         tp_levels = []
         for record in tp_list:
             try:
-                profit_percent = float(record.get('percent', 0))/100  # Default to 0.2% if not specified
-                close_fraction = float(record.get('close_fraction', 0))/100  # Default to 25% if not specified
-                tp_levels.append({"profit_percent": profit_percent, "close_fraction": close_fraction})
+                atr_multiple = float(record.get('atr_multiple', 0))
+                close_fraction = float(record.get('close_fraction', 0))/100  # Convert percentage to decimal
+                tp_levels.append({"atr_multiple": atr_multiple, "close_fraction": close_fraction})
             except ValueError as e:
                 logging.error(f"Invalid TP record: {record}. Error: {e}")
 
         sl_levels = []
         for record in sl_list:
             try:
-                profit_percent = float(record.get('percent', 0))/100  # Default to 0.2% if not specified
-                close_fraction = float(record.get('close_fraction', 0))/100  # Default to 25% if not specified
-                sl_levels.append({"profit_percent": profit_percent, "close_fraction": close_fraction})
+                atr_multiple = float(record.get('atr_multiple', 0))
+                close_fraction = float(record.get('close_fraction', 0))/100  # Convert percentage to decimal
+                sl_levels.append({"atr_multiple": atr_multiple, "close_fraction": close_fraction})
             except ValueError as e:
-                logging.error(f"Invalid TP record: {record}. Error: {e}")
+                logging.error(f"Invalid SL record: {record}. Error: {e}")
 
         remaining_quantity = quantity
         
         # --- Place multiple Take Profit orders ---
         # Ensure each take profit order meets the minimum notional value
         min_notional = 5.0  # Minimum notional value in USDT
+        
+        # Safety check for ATR value
+        if atr is None or atr <= 0:
+            logging.warning("ATR value is None or invalid. Using fallback ATR calculation.")
+            # Fallback: use 1% of entry price as ATR estimate
+            atr = entry_price * 0.01
+            
         for i, level in enumerate(tp_levels):
             tp_quantity = round(quantity * level['close_fraction'], quantity_decimals)
-            tp_price = f"{entry_price * (1 + level['profit_percent']):.{price_decimals}f}" if side == 'BUY' else f"{entry_price * (1 - level['profit_percent']):.{price_decimals}f}"
+            # Calculate TP price using ATR: entry_price +/- (atr * atr_multiple)
+            tp_price = f"{entry_price + (atr * level['atr_multiple']) if side == 'BUY' else entry_price - (atr * level['atr_multiple']):.{price_decimals}f}"
 
             # Skip orders that do not meet the minimum notional value
             if tp_quantity * float(tp_price) < min_notional:
@@ -194,44 +203,39 @@ class FuturesClient:
 
         # --- Place final Take Profit for the remaining amount ---
         # This ensures any rounding differences are handled in the last TP
-        if len(last_tp) > 0 and remaining_quantity > 0:
-            tp3_price = f"{entry_price * (1 + last_tp[0]):.{price_decimals}f}" if side == 'BUY' else f"{entry_price * (1 - last_tp[0]):.{price_decimals}f}"
+        if len(last_tp_atr) > 0 and remaining_quantity > 0:
+            # Calculate final TP price using ATR: entry_price +/- (atr * atr_multiple)
+            last_tp_price = f"{entry_price + (atr * last_tp_atr[0]) if side == 'BUY' else entry_price - (atr * last_tp_atr[0]):.{price_decimals}f}"
 
-            if remaining_quantity * float(tp3_price) >= min_notional:
+            if remaining_quantity * float(last_tp_price) >= min_notional:
                 self.client.new_order(
                     symbol=SYMBOL,
                     side=close_side,
                     type='TAKE_PROFIT_MARKET',
-                    stopPrice=tp3_price,
+                    stopPrice=last_tp_price,
                     quantity=round(remaining_quantity, quantity_decimals)
                 )
-                logging.info(f"Take Profit order #3 (remaining) placed: close {round(remaining_quantity, quantity_decimals)} at {tp3_price}.")
+                logging.info(f"Take Profit order #3 (remaining) placed: close {round(remaining_quantity, quantity_decimals)} at {last_tp_price}.")
             else:
                 logging.warning(f"Skipping final Take Profit order as its notional value is below the minimum required ({min_notional} USDT).")
         
-        # --- Place a single Stop Loss for the entire position ---
-        if side == 'BUY':
-            sl_price = f"{entry_price * (1 - STOP_LOSS_PERCENT):.{price_decimals}f}"
-        else: # SELL
-            sl_price = f"{entry_price * (1 + STOP_LOSS_PERCENT):.{price_decimals}f}"
-
-        # --- Place a single Trailing Stop Loss for the entire position ---
-        if atr is not None and entry_price > 0:
-            # Calculate callbackRate as a percentage of entry price
-            callback_rate = round((atr*1.5 / entry_price) * 100, 2)
-            # Binance minimum callbackRate is usually 0.1, so ensure it's not below that
-            callback_rate = max(callback_rate, 0.1)
-        else:
-            callback_rate = 0.5  # fallback to default
-
-        self.client.new_order(
-            symbol=SYMBOL,
-            side=close_side,
-            type='TRAILING_STOP_MARKET',
-            quantity=quantity,
-            callbackRate=callback_rate,
-            reduceOnly=True
-        )
+        if len(trailing_sl_atr) > 0 :
+            # --- Place a single Trailing Stop Loss for the entire position ---
+            if atr is not None and entry_price > 0:
+                # Calculate callbackRate as a percentage of entry price
+                callback_rate = round((atr*trailing_sl_atr[0] / entry_price) * 100, 2)
+                # Binance minimum callbackRate is usually 0.1, so ensure it's not below that
+                callback_rate = max(callback_rate, 0.1)
+            else:
+                callback_rate = 0.5  # fallback to default
+            self.client.new_order(
+                symbol=SYMBOL,
+                side=close_side,
+                type='TRAILING_STOP_MARKET',
+                quantity=quantity,
+                callbackRate=callback_rate,
+                reduceOnly=True
+            )
 
         return f"Success: {side} position opened for {quantity} {SYMBOL} at ~{entry_price}. Multiple TPs and one SL have been set."
     
