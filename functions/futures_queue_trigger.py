@@ -7,7 +7,7 @@ def main(msg: func.QueueMessage):
     try:
         message = msg.get_json()
         body = message.get("Body", "").strip()
-        logging.info(f"Queue trigger function processed a message for ticker: {body}")
+        logging.info(f"Queue trigger function processed a message body: {body}")
         signal_type = extractMessageBody(body)
         response_message = handle_futures(signal_type)
         logging.info(f"Processed message with signal type: {signal_type} - Response: {response_message}")
