@@ -9,8 +9,12 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         raw_body = req.get_body()
         decoded_body = raw_body.decode('utf-8').strip()
         signal_type = extractMessageBody(decoded_body)
-        response_message = handle_futures(signal_type)
-        return func.HttpResponse(json.dumps({"status": "success", "message": response_message}), status_code=200)
+        if signal_type in ["Close","Long","Short"]:
+            response_message = handle_futures(signal_type)
+            return func.HttpResponse(json.dumps({"status": "success", "message": response_message}), status_code=200)
+        else:
+            logging.error(f"Received unsupported signal type: {signal_type}. Skipping processing.")
+            return func.HttpResponse(json.dumps({"status": "ignored", "message": f"Unsupported signal type: {signal_type}"}), status_code=200)
 
     except ValueError as e:
         logging.warning(str(e))
