@@ -46,7 +46,6 @@ jobs:
 
       - name: 'Terraform Apply'
         env:
-          TF_LOG: DEBUG
           TF_VAR_binance_api_key: ${{ secrets.BINANCE_API_KEY }}
           TF_VAR_binance_api_secret: ${{ secrets.BINANCE_API_SECRET }}
           TF_VAT_app_version: ${{ env.APP_VERSION }}
