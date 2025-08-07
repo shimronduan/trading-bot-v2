@@ -1,6 +1,7 @@
 from trading_config import SYMBOL
 from utils.client_factory import create_futures_client
 from utils.storage_factory import create_table_storage_client, create_queue_client
+from trading_enums import TradingEnums, SignalType
 import base64
 import logging
 
@@ -8,10 +9,10 @@ def handle_futures(signal_type):
     client = create_futures_client()
     ats_client = create_table_storage_client()
     response_message = ""
-    if signal_type == "Close":
+    if signal_type == SignalType.CLOSE.value:
         response_message = client.close_all_for_symbol(symbol=SYMBOL)
     else:
-        desired_side = 'BUY' if signal_type == 'Long' else 'SELL'
+        desired_side = TradingEnums.signal_to_order_side(signal_type)
         should_proceed = client.manage_existing_position(signal_type)
 
         if not should_proceed:

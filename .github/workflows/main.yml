@@ -5,6 +5,12 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      provision_infrastructure:
+        description: 'Provision infrastructure with Terraform'
+        required: false
+        default: true
+        type: boolean
 
 env:
   AZURE_FUNCTIONAPP_NAME: 'trading-bot-app'
@@ -15,7 +21,9 @@ jobs:
   provision:
     runs-on: ubuntu-latest
     name: 🏗️ Provision Infrastructure with Terraform
-    environment: prod 
+    environment: prod
+    # Run on push OR when manually triggered with provision_infrastructure=true
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.provision_infrastructure) 
     steps:
       - name: 'Checkout code'
         uses: actions/checkout@v4
@@ -38,7 +46,6 @@ jobs:
 
       - name: 'Terraform Apply'
         env:
-          TF_LOG: DEBUG
           TF_VAR_binance_api_key: ${{ secrets.BINANCE_API_KEY }}
           TF_VAR_binance_api_secret: ${{ secrets.BINANCE_API_SECRET }}
           TF_VAT_app_version: ${{ env.APP_VERSION }}
@@ -48,7 +55,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     name: 🚀 Deploy Function Code
-    needs: provision
+    # Run after provision (if it ran) or independently if provision was skipped
+    needs: [provision]
+    if: always() && (needs.provision.result == 'success' || needs.provision.result == 'skipped')
     environment: prod
     steps:
       - name: 'Checkout GitHub Action'
