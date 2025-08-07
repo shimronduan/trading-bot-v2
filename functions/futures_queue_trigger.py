@@ -2,6 +2,7 @@ import azure.functions as func
 import logging
 from functions.futures_handler import handle_futures
 from utils.extract_body import extractMessageBody
+from trading_enums import TradingEnums
 
 def main(msg: func.QueueMessage):
     try:
@@ -9,7 +10,7 @@ def main(msg: func.QueueMessage):
         body = message.get("Body", "").strip()
         logging.info(f"Queue trigger function processed a message body: {body}")
         signal_type = extractMessageBody(body)
-        if signal_type in ["Close","Long","Short"]:
+        if TradingEnums.is_valid_signal(signal_type):
             response_message = handle_futures(signal_type)
             logging.info(f"Processed message with signal type: {signal_type} - Response: {response_message}")
         else:

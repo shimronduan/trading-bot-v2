@@ -3,13 +3,14 @@ import logging
 import json
 from functions.futures_handler import handle_futures
 from utils.extract_body import extractMessageBody
+from trading_enums import TradingEnums
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     try:
         raw_body = req.get_body()
         decoded_body = raw_body.decode('utf-8').strip()
         signal_type = extractMessageBody(decoded_body)
-        if signal_type in ["Close","Long","Short"]:
+        if TradingEnums.is_valid_signal(signal_type):
             response_message = handle_futures(signal_type)
             return func.HttpResponse(json.dumps({"status": "success", "message": response_message}), status_code=200)
         else:
