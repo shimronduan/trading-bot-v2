@@ -4,6 +4,7 @@ from functions.futures_http_trigger import main as futures_trading
 from functions.testing import main as testing
 from functions.queue_trigger import main as queue_trigger_function
 from functions.futures_queue_trigger import main as futures_queue_trigger
+from functions.tp_sl_http_trigger import main as tp_sl_http_trigger
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
 
@@ -23,6 +24,10 @@ def futures_queue_trigger_function_route(msg: func.QueueMessage):
 @app.route(route="testing")
 def testing_route(req: func.HttpRequest):
     return testing(req)
+
+@app.route(route="tp-sl")
+def tp_sl_route(req: func.HttpRequest):
+    return tp_sl_http_trigger(req)
 
 @app.function_name(name="QueueTriggerFunction")
 @app.queue_trigger(arg_name="msg", queue_name="orders", connection="AZURE_STORAGE_CONNECTION_STRING")

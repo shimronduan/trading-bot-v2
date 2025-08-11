@@ -1,5 +1,6 @@
 import logging
 import time
+from datetime import datetime, timedelta
 from binance.um_futures import UMFutures
 from technical_analysis import TechnicalAnalysis
 from trading_config import LEVERAGE, SYMBOL
@@ -85,6 +86,28 @@ class FuturesClient:
             time.sleep(0.5)
         
         raise Exception(f"Could not verify fill price for order {order_id}")
+
+    def get_pnl_over_interval(self, symbol: str, interval_hours: int) -> float:
+        """
+        Calculates the PnL for a given symbol over a specified interval in hours.
+        """
+        end_time = int(time.time() * 1000)
+        start_time = int((datetime.now() - timedelta(hours=interval_hours)).timestamp() * 1000)
+
+        income_history = self.client.get_income_history(
+            symbol=symbol,
+            startTime=start_time,
+            endTime=end_time,
+            limit=1000  # Max limit
+        )
+
+        total_pnl = 0.0
+        for income in income_history:
+            # REALIZED_PNL, FUNDING_FEE, COMMISSION are the main components of PnL
+            if income['incomeType'] in ['REALIZED_PNL', 'FUNDING_FEE', 'COMMISSION']:
+                total_pnl += float(income['income'])
+
+        return total_pnl
     
     def close_all_for_symbol(self, symbol: str) -> str:
         """Close all positions and orders for symbol"""
