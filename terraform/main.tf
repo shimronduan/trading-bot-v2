@@ -1,7 +1,7 @@
 # 1. Create the main resource group for the function app
 resource "azurerm_resource_group" "main" {
   name     = "trading-bot-${var.app_version}-rg"
-  location = "Germany West Central"
+  location = "Singapore"
 }
 
 # 2. Create the storage account required by the function app
