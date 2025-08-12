@@ -15,7 +15,7 @@ on:
 env:
   AZURE_FUNCTIONAPP_NAME: 'trading-bot-app'
   PYTHON_VERSION: '3.12'
-  APP_VERSION: 'v2' # Update this to match your app version
+  APP_VERSION: 'v3' # Update this to match your app version
 
 jobs:
   provision:
