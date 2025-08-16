@@ -83,7 +83,7 @@ class TakeProfitStopLossInfo:
         """Validate the data"""
         return (
             self.atr_multiple > 0 and
-            self.close_fraction > 0 and
+            self.close_fraction >= 0 and
             self.close_fraction <= 100 and
             self.row_key is not None
         )
