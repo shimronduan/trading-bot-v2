@@ -33,9 +33,25 @@ class AzureTableStorage:
         try:
             entity = self.table_client.get_entity(partition_key=partition_key, row_key=row_key)
             logging.info(f"Record retrieved from {self.table_name}: PK={partition_key}, RK={row_key}")
+            
+            # Convert entity to dictionary and ensure timestamp is included
+            if entity:
+                entity_dict = dict(entity)
+                
+                # Azure Table Storage entities have metadata that includes timestamp
+                if hasattr(entity, 'metadata'):
+                    logging.info(f"Entity metadata: {entity.metadata}")
+                    if 'timestamp' in entity.metadata:
+                        entity_dict['Timestamp'] = entity.metadata['timestamp']
+                
+                # Log the entity type and available attributes for debugging
+                logging.info(f"Entity type: {type(entity)}")
+                logging.info(f"Entity dir: {[attr for attr in dir(entity) if not attr.startswith('_')]}")
+                
+                return entity_dict
             return entity
-        except Exception:
-            logging.info(f"Record not found in {self.table_name}: PK={partition_key}, RK={row_key}")
+        except Exception as e:
+            logging.info(f"Record not found in {self.table_name} (PK={partition_key}, RK={row_key}): {e}")
             return None
 
     def upsert_record(self, entity: Dict[str, Any]) -> bool:
@@ -59,7 +75,18 @@ class AzureTableStorage:
     def list_records(self) -> list:
         try:
             entities = self.table_client.list_entities()
-            records = [entity for entity in entities]
+            records = []
+            for entity in entities:
+                # Convert entity to dictionary and ensure timestamp is included
+                entity_dict = dict(entity)
+                
+                # Azure Table Storage entities have metadata that includes timestamp
+                if hasattr(entity, 'metadata'):
+                    logging.info(f"List entity metadata: {entity.metadata}")
+                    if 'timestamp' in entity.metadata:
+                        entity_dict['Timestamp'] = entity.metadata['timestamp']
+                
+                records.append(entity_dict)
             return records
         except Exception as e:
             logging.error(f"Error listing records from {self.table_name}: {e}")
