@@ -1,5 +1,6 @@
 import logging
 from typing import Optional
+from datetime import datetime, time
 from binance.um_futures import UMFutures
 from binance.error import ClientError
 
@@ -63,3 +64,27 @@ class PositionManager:
         except ClientError as e:
             logging.error(f"Failed to close position: {e}")
             return False
+    
+    def get_total_pnl(self) -> float:
+        """Get total PNL for the day (unrealized + realized)"""
+        try:
+            # Get unrealized PNL from open positions
+            positions = self.client.get_position_risk()
+            unrealized_pnl = sum(float(p['unRealizedProfit']) for p in positions)
+            logging.info(f"Total unrealized PNL: {unrealized_pnl}")
+
+            # Get realized PNL for the day
+            today_start = datetime.combine(datetime.today(), time.min)
+            start_time_ms = int(today_start.timestamp() * 1000)
+            
+            income_history = self.client.get_income_history(startTime=start_time_ms, incomeType='REALIZED_PNL')
+            realized_pnl = sum(float(item['income']) for item in income_history)
+            logging.info(f"Today's realized PNL: {realized_pnl}")
+
+            total_pnl = unrealized_pnl + realized_pnl
+            logging.info(f"Total PNL (unrealized + today's realized): {total_pnl}")
+            return total_pnl
+            
+        except ClientError as e:
+            logging.error(f"Error fetching PNL: {e}")
+            return 0.0

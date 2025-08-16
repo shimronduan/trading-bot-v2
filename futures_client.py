@@ -118,3 +118,7 @@ class FuturesClient:
         
         logging.info(f"No position to close for {symbol}")
         return False
+    
+    def get_current_pnl(self) -> float:
+        """Get current unrealized PNL"""
+        return self.position_manager.get_total_pnl()
