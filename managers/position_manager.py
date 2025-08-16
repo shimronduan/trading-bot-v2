@@ -65,8 +65,8 @@ class PositionManager:
             logging.error(f"Failed to close position: {e}")
             return False
     
-    def get_total_pnl(self) -> float:
-        """Get total PNL for the day (unrealized + realized)"""
+    def get_total_pnl(self) -> str:
+        """Get total PNL for the day as a percentage of start-of-day portfolio value."""
         try:
             # Get unrealized PNL from open positions
             positions = self.client.get_position_risk()
@@ -82,9 +82,30 @@ class PositionManager:
             logging.info(f"Today's realized PNL: {realized_pnl}")
 
             total_pnl = unrealized_pnl + realized_pnl
-            logging.info(f"Total PNL (unrealized + today's realized): {total_pnl}")
-            return total_pnl
+            
+            # Get current wallet balance to calculate start-of-day value
+            account_balance = self.client.balance()
+            usdt_balance = next((b for b in account_balance if b['asset'] == 'USDT'), None)
+            
+            if not usdt_balance:
+                logging.error("Could not retrieve USDT balance.")
+                return "Error"
+
+            current_wallet_balance = float(usdt_balance['balance'])
+            
+            # Start of day balance = current balance - realized pnl for the day
+            start_of_day_balance = current_wallet_balance - realized_pnl
+            
+            if start_of_day_balance == 0:
+                return "0.00%"
+
+            pnl_percentage = (total_pnl / start_of_day_balance) * 100
+            
+            formatted_pnl = f"{pnl_percentage:+.2f}%"
+            logging.info(f"Total PNL: {total_pnl} ({formatted_pnl})")
+            
+            return formatted_pnl
             
         except ClientError as e:
             logging.error(f"Error fetching PNL: {e}")
-            return 0.0
+            return "Error"
