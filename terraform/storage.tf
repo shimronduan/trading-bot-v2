@@ -21,3 +21,8 @@ resource "azurerm_storage_table" "takeprofitandstoploss" {
   name                 = "TakeProfitAndStopLoss"
   storage_account_name = azurerm_storage_account.botstorage.name
 }
+
+resource "azurerm_storage_table" "tradingconfigs" {
+  name                 = "TradingConfigs"
+  storage_account_name = azurerm_storage_account.botstorage.name
+}
