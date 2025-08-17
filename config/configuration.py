@@ -10,6 +10,7 @@ def get_env_variables():
     AZURE_STORAGE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
     TRADING_STATE_TABLE_NAME = "TradingBotState"
     TP_SL_TABLE_NAME = "TakeProfitAndStopLoss"
+    TRADING_CONFIG_TABLE_NAME = "TradingConfigs"
     if not API_KEY or not API_SECRET or not AZURE_STORAGE_CONNECTION_STRING:
         raise ValueError("One or more required environment variables are not set.")
     return {
@@ -17,5 +18,6 @@ def get_env_variables():
         "API_SECRET": API_SECRET,
         "AZURE_STORAGE_CONNECTION_STRING": AZURE_STORAGE_CONNECTION_STRING,
         "TRADING_STATE_TABLE_NAME": TRADING_STATE_TABLE_NAME,
-        "TP_SL_TABLE_NAME": TP_SL_TABLE_NAME
+        "TP_SL_TABLE_NAME": TP_SL_TABLE_NAME,
+        "TRADING_CONFIG_TABLE_NAME": TRADING_CONFIG_TABLE_NAME
     }
