@@ -225,14 +225,16 @@ def update_record(req: func.HttpRequest, table_storage: AzureTableStorage, recor
 def delete_record(req: func.HttpRequest, table_storage: AzureTableStorage, record_id: str) -> func.HttpResponse:
     """Delete a record"""
     try:
-        if not record_id:
+        body = req.get_json()
+        partition_key = body.get("PartitionKey")
+        if not partition_key:
             return func.HttpResponse(
-                json.dumps({"error": "Record ID is required in the body for deletion"}),
+                json.dumps({"error": "PartitionKey is required in the body for deletion"}),
                 status_code=400,
                 mimetype="application/json"
             )
             
-        table_storage.delete_record(record_id, record_id)
+        table_storage.delete_record(partition_key, record_id)
         
         return func.HttpResponse(
             status_code=204
