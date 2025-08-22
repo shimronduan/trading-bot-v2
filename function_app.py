@@ -6,6 +6,7 @@ from functions.queue_trigger import main as queue_trigger_function
 from functions.futures_queue_trigger import main as futures_queue_trigger
 from functions.tp_sl_http_trigger import main as tp_sl_http_trigger
 from functions.trading_config_http_trigger import main as trading_config_http_trigger
+from functions.analytics_http_trigger import main as analytics_http_trigger
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
 
@@ -47,3 +48,8 @@ def trading_configs_route(req: func.HttpRequest):
 @app.route(route="trading_configs/{id}", methods=["GET", "PUT", "DELETE"])
 def trading_configs_with_id_route(req: func.HttpRequest):
     return trading_config_http_trigger(req)
+
+# Analytics endpoint with interval query parameter
+@app.route(route="analytics", methods=["GET"])
+def analytics_route(req: func.HttpRequest):
+    return analytics_http_trigger(req)
