@@ -1,8 +1,9 @@
 import logging
+from typing import Any, Dict
 from binance.um_futures import UMFutures
 
 from models.symbol_info import SymbolInfo
-from trading_config import LEVERAGE, WALLET_ALLOCATION
+from models.trading_config_info import TradingConfigInfo
 
 class OrderCalculator:
     """Handles order quantity and price calculations"""
@@ -33,7 +34,7 @@ class OrderCalculator:
         ticker = self.client.ticker_price(symbol)
         return float(ticker['price'])
     
-    def calculate_trade_quantity(self, symbol: str) -> float:
+    def calculate_trade_quantity(self, symbol: str, config:Dict[str, Any]) -> float:
         """Calculate trade quantity based on balance and leverage"""
         # Get USDT balance
         balances = self.client.balance()
@@ -49,8 +50,8 @@ class OrderCalculator:
         symbol_info = self.get_symbol_info(symbol)
         
         # Calculate quantity
-        trade_value_in_usdt = usdt_balance * WALLET_ALLOCATION
-        quantity = (trade_value_in_usdt * LEVERAGE) / current_price
+        trade_value_in_usdt = usdt_balance * config["wallet_allocation"]
+        quantity = (trade_value_in_usdt * config["leverage"]) / current_price
         rounded_quantity = round(quantity, symbol_info.quantity_precision)
         
         logging.info(f"Available USDT: {usdt_balance:.2f}. Current Price: {current_price}. Calculated Quantity: {rounded_quantity} {symbol}.")
