@@ -46,7 +46,7 @@ class FuturesClient:
             leverage = config["leverage"]
             # Get ATR for calculations
             ta_calculator = TechnicalAnalysis(client=self.client)
-            atr = ta_calculator.get_atr(symbol=SYMBOL) or (self._get_current_price(SYMBOL) * 0.01)
+            atr = ta_calculator.get_atr(symbol=SYMBOL, timeframe="4h") or (self._get_current_price(SYMBOL) * 0.01)
             
             # Clean slate - cancel existing orders
             self.position_manager.cancel_all_orders(SYMBOL)

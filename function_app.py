@@ -40,11 +40,10 @@ def tp_sl_route(req: func.HttpRequest):
 def tp_sl_with_id_route(req: func.HttpRequest):
     return tp_sl_http_trigger(req)
 
-# Trading Config CRUD endpoints
-@app.route(route="trading_config", methods=["GET", "POST"])
-def trading_config_route(req: func.HttpRequest):
+@app.route(route="trading_configs", methods=["GET", "POST"])
+def trading_configs_route(req: func.HttpRequest):
     return trading_config_http_trigger(req)
 
-@app.route(route="trading_config/{id}", methods=["GET", "PUT", "DELETE"])
-def trading_config_with_id_route(req: func.HttpRequest):
+@app.route(route="trading_configs/{id}", methods=["GET", "PUT", "DELETE"])
+def trading_configs_with_id_route(req: func.HttpRequest):
     return trading_config_http_trigger(req)

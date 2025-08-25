@@ -1,31 +1,33 @@
+# functions/trading_config_http_trigger.py
+
 import azure.functions as func
 import json
 import logging
 import os
-from typing import Dict, Any, Optional
+from typing import Any, Dict
 from datetime import datetime
 from azure_table_storage import AzureTableStorage
-from models.trading_config_info import TradingConfigInfo
 
-def format_timestamp(timestamp) -> Optional[str]:
-    """Helper function to format timestamp properly"""
-    if not timestamp:
-        return None
-    if isinstance(timestamp, datetime):
-        return timestamp.isoformat() + "Z"
-    return str(timestamp)
+def json_serial(obj: Any) -> str:
+    """JSON serializer for objects not serializable by default json code"""
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    # Handle TablesEntityDatetime
+    if hasattr(obj, 'isoformat'):
+        return obj.isoformat()
+    raise TypeError(f"Type {type(obj)} not serializable")
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     """
-    HTTP trigger for Trading Config CRUD operations
+    HTTP trigger for Trading Configs CRUD operations
     Endpoints:
-    - GET /trading_config/{id} - Get specific record
-    - GET /trading_config - Get all records
-    - POST /trading_config - Create new record
-    - PUT /trading_config/{id} - Update existing record
-    - DELETE /trading_config/{id} - Delete record
+    - GET /trading_configs/{id} - Get specific record
+    - GET /trading_configs - Get all records
+    - POST /trading_configs - Create new record
+    - PUT /trading_configs/{id} - Update existing record
+    - DELETE /trading_configs/{id} - Delete record
     """
-    logging.info('Trading Config HTTP trigger function processed a request.')
+    logging.info('Trading Configs HTTP trigger function processed a request.')
     
     try:
         # Initialize Azure Table Storage
@@ -84,7 +86,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             )
     
     except Exception as e:
-        logging.error(f"Error in trading config HTTP trigger: {e}")
+        logging.error(f"Error in trading_configs HTTP trigger: {e}")
         return func.HttpResponse(
             json.dumps({"error": "Internal server error"}),
             status_code=500,
@@ -94,40 +96,23 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 def get_record(table_storage: AzureTableStorage, record_id: str) -> func.HttpResponse:
     """Get a specific record by ID"""
     try:
-        # Try with record_id as both partition key and row key (common pattern for trading symbols)
         entity = table_storage.read_record(record_id, record_id)
-        
-        # If not found, search all records
-        if not entity:
-            all_entities = table_storage.list_records()
-            for ent in all_entities:
-                if ent.get("RowKey") == record_id:
-                    entity = ent
-                    break
-        
         if entity:
-            config_info = TradingConfigInfo.from_entity(entity)
             return func.HttpResponse(
-                json.dumps({
-                    "PartitionKey": config_info.partition_key,
-                    "RowKey": config_info.row_key,
-                    "LEVERAGE": config_info.leverage,
-                    "WALLET_ALLOCATION": config_info.wallet_allocation,
-                    "Timestamp": format_timestamp(config_info.timestamp)
-                }),
+                json.dumps(entity, default=json_serial),
                 status_code=200,
                 mimetype="application/json"
             )
         else:
             return func.HttpResponse(
-                json.dumps({"error": f"Record with ID {record_id} not found"}),
+                json.dumps({"error": "Record not found"}),
                 status_code=404,
                 mimetype="application/json"
             )
     except Exception as e:
-        logging.error(f"Error getting record {record_id}: {e}")
+        logging.error(f"Error getting record: {e}")
         return func.HttpResponse(
-            json.dumps({"error": "Failed to retrieve record"}),
+            json.dumps({"error": "Internal server error"}),
             status_code=500,
             mimetype="application/json"
         )
@@ -136,26 +121,15 @@ def get_all_records(table_storage: AzureTableStorage) -> func.HttpResponse:
     """Get all records"""
     try:
         entities = table_storage.list_records()
-        records = []
-        for entity in entities:
-            config_info = TradingConfigInfo.from_entity(entity)
-            records.append({
-                "PartitionKey": config_info.partition_key,
-                "RowKey": config_info.row_key,
-                "LEVERAGE": config_info.leverage,
-                "WALLET_ALLOCATION": config_info.wallet_allocation,
-                "Timestamp": format_timestamp(config_info.timestamp)
-            })
-        
         return func.HttpResponse(
-            json.dumps({"records": records, "count": len(records)}),
+            json.dumps(list(entities), default=json_serial),
             status_code=200,
             mimetype="application/json"
         )
     except Exception as e:
         logging.error(f"Error getting all records: {e}")
         return func.HttpResponse(
-            json.dumps({"error": "Failed to retrieve records"}),
+            json.dumps({"error": "Internal server error"}),
             status_code=500,
             mimetype="application/json"
         )
@@ -163,80 +137,43 @@ def get_all_records(table_storage: AzureTableStorage) -> func.HttpResponse:
 def create_record(req: func.HttpRequest, table_storage: AzureTableStorage) -> func.HttpResponse:
     """Create a new record"""
     try:
-        # Parse request body
-        req_body = req.get_json()
-        if not req_body:
+        body = req.get_json()
+        
+        # Basic validation
+        required_fields = ["PartitionKey", "RowKey", "leverage", "wallet_allocation", "chart_time_interval", "atr_candles"]
+        if not all(field in body for field in required_fields):
             return func.HttpResponse(
-                json.dumps({"error": "Request body is required"}),
+                json.dumps({"error": "Missing required fields"}),
                 status_code=400,
                 mimetype="application/json"
             )
+            
+        trading_config: Dict[str, Any] = {
+            "PartitionKey": body["PartitionKey"],
+            "RowKey": body["RowKey"],
+            "leverage": body["leverage"],
+            "wallet_allocation": body["wallet_allocation"],
+            "chart_time_interval": body["chart_time_interval"],
+            "atr_candles": body["atr_candles"]
+        }
         
-        # Extract ID from request body - support both "id" and "RowKey" formats
-        record_id = req_body.get("id") or req_body.get("RowKey")
-        if not record_id:
-            return func.HttpResponse(
-                json.dumps({"error": "ID or RowKey is required"}),
-                status_code=400,
-                mimetype="application/json"
-            )
+        table_storage.create_record(trading_config)
         
-        # Ensure the request body has the id field for the model
-        req_body["id"] = record_id
-        
-        # Create TradingConfigInfo instance
-        config_info = TradingConfigInfo.from_dict(req_body)
-        
-        # Validate data
-        if not config_info.validate():
-            return func.HttpResponse(
-                json.dumps({"error": "Invalid data. leverage must be > 0, wallet_allocation must be between 0-1.0"}),
-                status_code=400,
-                mimetype="application/json"
-            )
-        
-        # Check if record already exists
-        existing = table_storage.read_record(config_info.partition_key or record_id, record_id)
-        if existing:
-            return func.HttpResponse(
-                json.dumps({"error": f"Record with ID {record_id} already exists"}),
-                status_code=409,
-                mimetype="application/json"
-            )
-        
-        # Create record
-        entity = config_info.to_entity()
-        success = table_storage.create_record(entity)
-        
-        if success:
-            return func.HttpResponse(
-                json.dumps({
-                    "message": "Record created successfully",
-                    "PartitionKey": config_info.partition_key,
-                    "RowKey": record_id,
-                    "LEVERAGE": config_info.leverage,
-                    "WALLET_ALLOCATION": config_info.wallet_allocation
-                }),
-                status_code=201,
-                mimetype="application/json"
-            )
-        else:
-            return func.HttpResponse(
-                json.dumps({"error": "Failed to create record"}),
-                status_code=500,
-                mimetype="application/json"
-            )
-    
-    except ValueError as e:
         return func.HttpResponse(
-            json.dumps({"error": f"Invalid request data: {str(e)}"}),
+            json.dumps(trading_config, default=json_serial),
+            status_code=201,
+            mimetype="application/json"
+        )
+    except ValueError as ve:
+        return func.HttpResponse(
+            json.dumps({"error": str(ve)}),
             status_code=400,
             mimetype="application/json"
         )
     except Exception as e:
         logging.error(f"Error creating record: {e}")
         return func.HttpResponse(
-            json.dumps({"error": "Failed to create record"}),
+            json.dumps({"error": "Internal server error"}),
             status_code=500,
             mimetype="application/json"
         )
@@ -244,62 +181,42 @@ def create_record(req: func.HttpRequest, table_storage: AzureTableStorage) -> fu
 def update_record(req: func.HttpRequest, table_storage: AzureTableStorage, record_id: str) -> func.HttpResponse:
     """Update an existing record"""
     try:
-        # Parse request body
-        req_body = req.get_json()
-        if not req_body:
+        body = req.get_json()
+        
+        partition_key = body.get("PartitionKey")
+        if not partition_key:
             return func.HttpResponse(
-                json.dumps({"error": "Request body is required"}),
+                json.dumps({"error": "PartitionKey is required in the body for an update"}),
                 status_code=400,
                 mimetype="application/json"
             )
-        
-        # Set the ID from the URL parameter
-        req_body["id"] = record_id
-        
-        # Create TradingConfigInfo instance
-        config_info = TradingConfigInfo.from_dict(req_body)
-        
-        # Validate data
-        if not config_info.validate():
+
+        # Check if record exists
+        existing_entity = table_storage.read_record(partition_key, record_id)
+        if not existing_entity:
             return func.HttpResponse(
-                json.dumps({"error": "Invalid data. leverage must be > 0, wallet_allocation must be between 0-1.0"}),
-                status_code=400,
+                json.dumps({"error": "Record not found"}),
+                status_code=404,
                 mimetype="application/json"
             )
         
-        # Update record using upsert (will create if doesn't exist)
-        entity = config_info.to_entity()
-        success = table_storage.upsert_record(entity)
+        # Update fields
+        existing_entity["leverage"] = body.get("leverage", existing_entity.get("leverage"))
+        existing_entity["wallet_allocation"] = body.get("wallet_allocation", existing_entity.get("wallet_allocation"))
+        existing_entity["chart_time_interval"] = body.get("chart_time_interval", existing_entity.get("chart_time_interval"))
+        existing_entity["atr_candles"] = body.get("atr_candles", existing_entity.get("atr_candles"))
+
+        table_storage.upsert_record(existing_entity)
         
-        if success:
-            return func.HttpResponse(
-                json.dumps({
-                    "message": "Record updated successfully",
-                    "PartitionKey": config_info.partition_key,
-                    "RowKey": record_id,
-                    "LEVERAGE": config_info.leverage,
-                    "WALLET_ALLOCATION": config_info.wallet_allocation
-                }),
-                status_code=200,
-                mimetype="application/json"
-            )
-        else:
-            return func.HttpResponse(
-                json.dumps({"error": "Failed to update record"}),
-                status_code=500,
-                mimetype="application/json"
-            )
-    
-    except ValueError as e:
         return func.HttpResponse(
-            json.dumps({"error": f"Invalid request data: {str(e)}"}),
-            status_code=400,
+            json.dumps(existing_entity, default=json_serial),
+            status_code=200,
             mimetype="application/json"
         )
     except Exception as e:
-        logging.error(f"Error updating record {record_id}: {e}")
+        logging.error(f"Error updating record: {e}")
         return func.HttpResponse(
-            json.dumps({"error": "Failed to update record"}),
+            json.dumps({"error": "Internal server error"}),
             status_code=500,
             mimetype="application/json"
         )
@@ -307,57 +224,26 @@ def update_record(req: func.HttpRequest, table_storage: AzureTableStorage, recor
 def delete_record(req: func.HttpRequest, table_storage: AzureTableStorage, record_id: str) -> func.HttpResponse:
     """Delete a record"""
     try:
-        # Try to get partition key from request body
-        partition_key = record_id  # default to record_id as partition key
-        try:
-            req_body = req.get_json()
-            if req_body and "PartitionKey" in req_body:
-                partition_key = req_body["PartitionKey"]
-                logging.info(f"Using partition key from request body: {partition_key}")
-        except:
-            logging.info(f"No request body or PartitionKey found, using default '{record_id}'")
-        
-        # First try to find the record with the specified partition key
-        existing = table_storage.read_record(partition_key, record_id)
-        
-        # If not found with specified partition key, search all partitions
-        if not existing:
-            logging.info(f"Record not found with PartitionKey '{partition_key}', searching all records...")
-            all_entities = table_storage.list_records()
-            for ent in all_entities:
-                if ent.get("RowKey") == record_id:
-                    existing = ent
-                    partition_key = ent.get("PartitionKey", record_id)
-                    logging.info(f"Found record with PartitionKey: {partition_key}")
-                    break
-        
-        if not existing:
+        body = req.get_json()
+        partition_key = body.get("PartitionKey")
+        if not partition_key:
             return func.HttpResponse(
-                json.dumps({"error": f"Record with ID {record_id} not found"}),
-                status_code=404,
+                json.dumps({"error": "PartitionKey is required in the body for deletion"}),
+                status_code=400,
                 mimetype="application/json"
             )
+            
+        table_storage.delete_record(partition_key, record_id)
         
-        # Delete record using the correct partition key
-        success = table_storage.delete_record(partition_key, record_id)
-        
-        if success:
-            return func.HttpResponse(
-                json.dumps({"message": f"Record with ID {record_id} deleted successfully"}),
-                status_code=200,
-                mimetype="application/json"
-            )
-        else:
-            return func.HttpResponse(
-                json.dumps({"error": "Failed to delete record"}),
-                status_code=500,
-                mimetype="application/json"
-            )
-    
-    except Exception as e:
-        logging.error(f"Error deleting record {record_id}: {e}")
         return func.HttpResponse(
-            json.dumps({"error": "Failed to delete record"}),
+            status_code=204
+        )
+    except Exception as e:
+        logging.error(f"Error deleting record: {e}")
+        return func.HttpResponse(
+            json.dumps({"error": "Internal server error"}),
             status_code=500,
             mimetype="application/json"
         )
+
+

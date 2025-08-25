@@ -3,7 +3,7 @@ from typing import Dict, Any, Optional, Union
 from datetime import datetime
 
 @dataclass
-class TradingConfigInfo:
+class TradingConfigInfoData:
     """Data class for Trading Configuration information"""
     leverage: int
     wallet_allocation: float
@@ -24,7 +24,7 @@ class TradingConfigInfo:
         return entity
     
     @classmethod
-    def from_entity(cls, entity: Dict[str, Any]) -> 'TradingConfigInfo':
+    def from_entity(cls, entity: Dict[str, Any]) -> 'TradingConfigInfoData':
         """Create instance from Azure Table Storage entity"""
         import logging
         
@@ -64,7 +64,7 @@ class TradingConfigInfo:
         )
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'TradingConfigInfo':
+    def from_dict(cls, data: Dict[str, Any]) -> 'TradingConfigInfoData':
         """Create instance from dictionary (e.g., from HTTP request)"""
         # Support both "id" and "RowKey" formats
         row_key = data.get("id") or data.get("RowKey")
@@ -87,3 +87,18 @@ class TradingConfigInfo:
             self.row_key is not None and
             self.partition_key is not None
         )
+
+# models/trading_config_info.py
+
+from typing import TypedDict
+
+class TradingConfigInfoDict(TypedDict):
+    """
+    A dictionary representing the trading configuration for a symbol.
+    """
+    PartitionKey: str
+    RowKey: str
+    leverage: int
+    wallet_allocation: float
+    chart_time_interval: str
+    atr_candles: int
