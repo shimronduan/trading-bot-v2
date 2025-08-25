@@ -1,8 +1,9 @@
 import logging
 import time
+from typing import Any, Dict
 from binance.um_futures import UMFutures
 from technical_analysis import TechnicalAnalysis
-from trading_config import LEVERAGE, SYMBOL
+from trading_config import SYMBOL
 from managers import PositionManager, OrderCalculator, TakeProfitStopLossManager
 from trading_enums import TradingEnums
 
@@ -33,13 +34,16 @@ class FuturesClient:
         logging.info(f"Closing opposing {position.side} position")
         return self.position_manager.close_position(position)
     
-    def calculate_trade_quantity(self) -> float:
+    def calculate_trade_quantity(self, config: Dict[str, Any]) -> float:
         """Calculate trade quantity - delegates to calculator"""
-        return self.calculator.calculate_trade_quantity(SYMBOL)
-    
-    def execute_trade_with_sl_tp(self, side: str, quantity: float, tp_sl_configs: list) -> str:
+        leverage = config["leverage"]
+        wallet_allocation = config["wallet_allocation"]
+        return self.calculator.calculate_trade_quantity(SYMBOL, leverage, wallet_allocation)
+
+    def execute_trade_with_sl_tp(self, side: str, quantity: float, tp_sl_configs: list, config: Dict[str, Any]) -> str:
         """Execute trade with stop loss and take profit orders"""
         try:
+            leverage = config["leverage"]
             # Get ATR for calculations
             ta_calculator = TechnicalAnalysis(client=self.client)
             atr = ta_calculator.get_atr(symbol=SYMBOL, timeframe="4h") or (self._get_current_price(SYMBOL) * 0.01)
@@ -48,9 +52,9 @@ class FuturesClient:
             self.position_manager.cancel_all_orders(SYMBOL)
             
             # Set leverage
-            self.client.change_leverage(symbol=SYMBOL, leverage=LEVERAGE)
-            logging.info(f"Leverage set to {LEVERAGE}x")
-            
+            self.client.change_leverage(symbol=SYMBOL, leverage=leverage)
+            logging.info(f"Leverage set to {leverage}x")
+
             # Execute main order
             entry_price = self._execute_market_order(side, quantity)
             

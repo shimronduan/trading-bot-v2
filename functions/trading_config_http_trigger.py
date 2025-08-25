@@ -7,7 +7,6 @@ import os
 from typing import Any, Dict
 from datetime import datetime
 from azure_table_storage import AzureTableStorage
-from models.trading_config_info import TradingConfigInfo
 
 def json_serial(obj: Any) -> str:
     """JSON serializer for objects not serializable by default json code"""

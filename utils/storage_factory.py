@@ -4,11 +4,11 @@ from azure.storage.queue import QueueClient
 from config.configuration import get_env_variables
 
 
-def create_table_storage_client():
+def create_table_storage_client(table_name: str):
     env_vars = get_env_variables()
     return AzureTableStorage(
         connection_string=env_vars["AZURE_STORAGE_CONNECTION_STRING"],
-        table_name=env_vars["TP_SL_TABLE_NAME"]
+        table_name=table_name
     )
 
 def create_queue_client(queue_name: str):

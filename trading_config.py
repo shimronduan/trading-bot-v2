@@ -20,7 +20,5 @@ GENERIC_ROUNDING = Decimal('0.00000001')
 
 # Configuration for futures trading
 SYMBOL = 'DOGEUSDT'
-LEVERAGE = 5
-WALLET_ALLOCATION = 0.65  # 75% of available wallet balance
-TAKE_PROFIT_PERCENT = 0.005  # 0.5%
-STOP_LOSS_PERCENT = 0.005    # 0.5%
+TP_SL_TABLE_NAME = "TakeProfitAndStopLoss"
+TRADING_CONFIG_TABLE_NAME = "TradingConfigs"
