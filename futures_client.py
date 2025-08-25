@@ -43,11 +43,13 @@ class FuturesClient:
     def execute_trade_with_sl_tp(self, side: str, quantity: float, tp_sl_configs: list, config: Dict[str, Any]) -> str:
         """Execute trade with stop loss and take profit orders"""
         try:
-            leverage = config["leverage"]
+            leverage = int(config["leverage"])
+            timeframe = config["chart_time_interval"]
+            atr_candles = int(config["atr_candles"])
             # Get ATR for calculations
             ta_calculator = TechnicalAnalysis(client=self.client)
-            atr = ta_calculator.get_atr(symbol=SYMBOL, timeframe="4h") or (self._get_current_price(SYMBOL) * 0.01)
-            
+            atr = ta_calculator.get_atr(symbol=SYMBOL, timeframe=timeframe, length=atr_candles) or (self._get_current_price(SYMBOL) * 0.01)
+
             # Clean slate - cancel existing orders
             self.position_manager.cancel_all_orders(SYMBOL)
             
